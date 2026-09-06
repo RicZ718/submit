@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="曾睿哲的大学新生个人主页" />
+    <title>曾睿哲｜个人主页</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <header class="site-header">
+      <nav class="nav container" aria-label="主导航">
+        <a class="brand" href="#home">个人主页</a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-links">菜单</button>
+        <div class="nav-links" id="nav-links">
+          <a href="#profile" data-panel-target="basic">基本信息</a>
+          <a href="#profile" data-panel-target="interests">兴趣爱好</a>
+          <a href="#profile" data-panel-target="contact">联系我</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="home" aria-labelledby="hero-title">
+        <div class="container hero-content">
+          <p class="eyebrow">HELLO, I AM</p>
+          <h1 id="hero-title">曾睿哲</h1>
+          <p class="hero-intro">广东工业大学 · 集成电路制造与集成设计专业 · 大一新生</p>
+          <a class="button" href="#profile">查看资料</a>
+        </div>
+      </section>
+
+      <section class="profile-section" id="profile" aria-labelledby="profile-title">
+        <div class="container compact-profile">
+          <p class="section-kicker">PROFILE</p>
+          <h2 id="profile-title">我的资料</h2>
+          <div class="profile-tabs" role="tablist" aria-label="个人资料分类">
+            <button class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="basic-panel" id="basic-tab" data-panel="basic">基本信息</button>
+            <button class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="interests-panel" id="interests-tab" data-panel="interests">兴趣爱好</button>
+            <button class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="contact-panel" id="contact-tab" data-panel="contact">联系我</button>
+          </div>
+
+          <div class="page-book">
+            <article class="profile-panel card" id="basic-panel" role="tabpanel" aria-labelledby="basic-tab" data-panel-content="basic">
+              <dl class="facts">
+                <div><dt>姓名</dt><dd>曾睿哲</dd></div>
+                <div><dt>年级</dt><dd>大一新生</dd></div>
+                <div><dt>学校</dt><dd>广东工业大学</dd></div>
+                <div><dt>专业</dt><dd>集成电路制造与集成设计</dd></div>
+                <div><dt>毕业高中</dt><dd>广州市执信中学</dd></div>
+                <div><dt>住址</dt><dd>广州市番禺区</dd></div>
+                <div><dt>出生日期</dt><dd>2007/10/08</dd></div>
+                <div><dt>性别</dt><dd>男</dd></div>
+              </dl>
+            </article>
+
+            <section class="profile-panel card interest-panel" id="interests-panel" role="tabpanel" aria-labelledby="interests-tab" data-panel-content="interests" hidden>
+              <div class="interest-list">
+                <article class="card interest-card"><span aria-hidden="true">🏀</span><h3>运动</h3><p>我精通篮球、羽毛球、乒乓球、长跑和游泳，对其他的运动项目也略知一二。</p></article>
+                <article class="card interest-card"><span aria-hidden="true">🎬</span><h3>观影</h3><p>我热衷于观看电影、动漫和影视剧，喜欢收集感触很深的作品并发表影评。</p></article>
+                <article class="card interest-card"><span aria-hidden="true">✈️</span><h3>旅行</h3><p>我喜欢在国内外拥有独特风景的地方旅行，并记录下沿途看到的一切。</p></article>
+              </div>
+            </section>
+
+            <section class="profile-panel card contact-card" id="contact-panel" role="tabpanel" aria-labelledby="contact-tab" data-panel-content="contact" hidden>
+              <div class="contact-links">
+                <span>电话：<a href="tel:19576567810">19576567810</a> / <a href="tel:13610064130">13610064130</a></span>
+                <span>微信：z064130_</span>
+                <span>QQ：2712726262</span>
+                <span>邮箱：<a href="mailto:zengruizhe20071008@163.com">163</a> / <a href="mailto:ricrz718@gmail.com">Gmail</a></span>
+                <span>社交媒体：小红书 / Instagram / Twitter</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer"><div class="container">© <span id="year"></span> 曾睿哲 · 个人主页</div></footer>
+    <script src="script.js"></script>
+  </body>
+</html>
