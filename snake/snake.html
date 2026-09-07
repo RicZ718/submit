@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>贪吃蛇 · Snake</title>
+<style>
+
+* { box-sizing: border-box; }
+:root {
+  --bg: #0f172a; --panel: #111827; --panel2: #1f2937; --text: #e5e7eb; --muted: #94a3b8;
+  --board-bg: #0b1220; --grid-line: #1f2937; --snake: #22c55e; --snake-head: #86efac;
+  --food: #ef4444; --mine: #1f2937; --mine-ring: #f59e0b; --accent: #38bdf8; --border: #334155;
+  --danger: #ef4444; --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+}
+[data-theme="light"] {
+  --bg: #f1f5f9; --panel: #ffffff; --panel2: #e2e8f0; --text: #0f172a; --muted: #64748b;
+  --board-bg: #e2e8f0; --grid-line: #cbd5e1; --snake: #16a34a; --snake-head: #065f46;
+  --food: #dc2626; --mine: #334155; --mine-ring: #d97706; --accent: #0284c7; --border: #cbd5e1;
+  --danger: #dc2626; --shadow: 0 10px 30px rgba(15, 23, 42, .12);
+}
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  display: flex; justify-content: center; padding: 24px 16px;
+}
+.app { width: 100%; max-width: 504px; display: flex; flex-direction: column; gap: 14px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; }
+.topbar h1 { margin: 0; font-size: 22px; }
+.settings { display: flex; gap: 16px; flex-wrap: wrap; }
+.settings label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+select { font: inherit; font-size: 14px; padding: 6px 8px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.stat .label { font-size: 12px; color: var(--muted); }
+.stat .value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.progress-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.progress { flex: 1; height: 10px; background: var(--panel2); border-radius: 999px;
+  overflow: hidden; border: 1px solid var(--border); }
+.progress-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 999px;
+  transition: width .15s ease; }
+.board-wrap { position: relative; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px; box-shadow: var(--shadow); }
+canvas { display: block; width: 100%; height: auto; border-radius: 8px; background: var(--board-bg); }
+.overlay { position: absolute; inset: 10px; border-radius: 8px; background: rgba(2, 6, 23, .55);
+  display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; }
+[data-theme="light"] .overlay { background: rgba(255, 255, 255, .72); }
+.overlay.hidden { display: none; }
+.overlay-inner { max-width: 360px; }
+.overlay-title { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+.overlay-text { font-size: 14px; line-height: 1.7; white-space: pre-line; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: inherit; font-size: 14px; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); cursor: pointer;
+  transition: transform .06s ease, background .15s ease; }
+.btn:hover { background: var(--panel2); }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #04121f; font-weight: 700; }
+.btn.danger { color: var(--danger); }
+.help { margin: 0; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.7; }
+.modal { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); display: flex;
+  align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.modal.hidden { display: none; }
+.modal-box { background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+  width: 100%; max-width: 460px; padding: 16px; box-shadow: var(--shadow); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.modal-head h2 { margin: 0; font-size: 17px; }
+.history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;
+  gap: 8px; max-height: 60vh; overflow: auto; }
+.history-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--panel2); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+.badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.badge.win { background: #14532d; color: #86efac; }
+.badge.lose { background: #7f1d1d; color: #fca5a5; }
+[data-theme="light"] .badge.win { background: #dcfce7; color: #166534; }
+[data-theme="light"] .badge.lose { background: #fee2e2; color: #991b1b; }
+.muted { color: var(--muted); }
+
+</style>
+<script>(function () {
+  try {
+    var t = localStorage.getItem("snake_theme");
+    if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+  } catch (e) {}
+})();</script>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="topbar">
+    <h1>🐍 贪吃蛇</h1>
+    <button id="btn-theme" class="btn" type="button" title="切换主题">🌙 深色</button>
+  </header>
+
+  <div class="settings">
+    <label>难度
+      <select id="difficulty">
+        <option value="easy">简单</option>
+        <option value="normal">普通</option>
+        <option value="hard">困难</option>
+        <option value="endless">无尽</option>
+      </select>
+    </label>
+    <label>操控
+      <select id="control">
+        <option value="keyboard">键盘</option>
+        <option value="mouse">鼠标</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="label">得分</span><span class="value" id="score">0</span></div>
+    <div class="stat"><span class="label">最高分</span><span class="value" id="high">0</span></div>
+    <div class="stat"><span class="label">局数</span><span class="value" id="games">0</span></div>
+    <div class="stat"><span class="label">步数</span><span class="value" id="steps">0</span></div>
+    <div class="stat"><span class="label">剩余雷数</span><span class="value" id="mines">0</span></div>
+    <div class="stat"><span class="label">生命</span><span class="value" id="lives">3/3</span></div>
+  </div>
+
+  <div class="progress-row">
+    <span>目标 <span id="target">100</span> 分</span>
+    <div class="progress"><div class="progress-fill" id="progress"></div></div>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="game" width="480" height="480" aria-label="贪吃蛇游戏区域">您的浏览器不支持 Canvas</canvas>
+    <div id="overlay" class="overlay">
+      <div class="overlay-inner">
+        <div id="overlay-title" class="overlay-title"></div>
+        <div id="overlay-text" class="overlay-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="btn-new" class="btn primary" type="button">新一局</button>
+    <button id="btn-pause" class="btn" type="button">暂停</button>
+    <button id="btn-history" class="btn" type="button">历史记录</button>
+    <button id="btn-reset" class="btn danger" type="button">重置记录</button>
+  </div>
+
+  <p id="help" class="help">方向键 / WASD 移动 · 空格 暂停 · Enter 重开 · 吃到食物得分 · 别碰墙、自己或雷 · 达到目标分通关</p>
+</div>
+
+<div id="history-modal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>最近 10 局</h2>
+      <button id="history-close" class="btn" type="button">✕</button>
+    </div>
+    <ul id="history-list" class="history-list"></ul>
+    <p id="history-empty" class="muted">暂无记录</p>
+  </div>
+</div>
+
+<script>
+
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory();
+  } else {
+    root.SnakeCore = factory();
+  }
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  var DIR = {
+    UP: { x: 0, y: -1 },
+    DOWN: { x: 0, y: 1 },
+    LEFT: { x: -1, y: 0 },
+    RIGHT: { x: 1, y: 0 }
+  };
+  var OPPOSITE = { UP: "DOWN", DOWN: "UP", LEFT: "RIGHT", RIGHT: "LEFT" };
+
+  // 四档难度。easy 的尺寸/雷/目标取生成器注入的基线（cols/rows/target/maxMines）。
+  var DIFFICULTIES = {
+    easy:    { label: "简单", cols: null, rows: null, maxMines: null, target: undefined, reshuffleMines: false },
+    normal:  { label: "普通", cols: 40, rows: 20, maxMines: 20, target: 250,  reshuffleMines: false },
+    hard:    { label: "困难", cols: 40, rows: 20, maxMines: 50, target: 1000, reshuffleMines: false },
+    endless: { label: "无尽", cols: 40, rows: 30, maxMines: 50, target: null, reshuffleMines: true }
+  };
+
+  function key(p) { return p.x + "," + p.y; }
+
+  function inBounds(state, x, y) { return x >= 0 && x < state.cols && y >= 0 && y < state.rows; }
+
+  // 在给定 occupied 集合之外随机取一个空格。
+  function randomCell(state, occupied) {
+    var free = [];
+    for (var y = 0; y < state.rows; y++) {
+      for (var x = 0; x < state.cols; x++) {
+        if (!occupied.has(x + "," + y)) free.push({ x: x, y: y });
+      }
+    }
+    if (free.length === 0) return null;
+    return free[Math.floor(Math.random() * free.length)];
+  }
+
+  // 蛇头四邻也排除，避免开局/刷新时贴脸刷雷导致不公平。
+  function blockNearHead(state, occupied) {
+    var h = state.snake[0];
+    var n = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (var i = 0; i < n.length; i++) {
+      var x = h.x + n[i][0], y = h.y + n[i][1];
+      if (inBounds(state, x, y)) occupied.add(x + "," + y);
+    }
+  }
+
+  function randomFreeCell(state) {
+    var occupied = new Set();
+    state.snake.forEach(function (s) { occupied.add(key(s)); });
+    if (state.food) occupied.add(key(state.food));
+    (state.mines || []).forEach(function (m) { occupied.add(key(m)); });
+    return randomCell(state, occupied);
+  }
+
+  // 从 from 到 to 是否可通（BFS；蛇身与雷视为障碍，to 视为可达目标）。
+  function reachable(state, from, to, extraMines) {
+    var blocked = new Set();
+    state.snake.forEach(function (s) { blocked.add(key(s)); });
+    var mines = extraMines || state.mines || [];
+    mines.forEach(function (m) { blocked.add(key(m)); });
+    if (to) blocked.delete(key(to));
+    var queue = [from];
+    var seen = new Set();
+    seen.add(key(from));
+    while (queue.length) {
+      var cur = queue.shift();
+      if (cur.x === to.x && cur.y === to.y) return true;
+      var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      for (var i = 0; i < dirs.length; i++) {
+        var nx = cur.x + dirs[i][0], ny = cur.y + dirs[i][1];
+        var k = nx + "," + ny;
+        if (!inBounds(state, nx, ny) || blocked.has(k) || seen.has(k)) continue;
+        seen.add(k);
+        queue.push({ x: nx, y: ny });
+      }
+    }
+    return false;
+  }
+
+  // 放置食物：优先取「从蛇头可达」的空格，保证食物不会因雷/蛇身被隔死。
+  function placeFood(state) {
+    for (var t = 0; t < 60; t++) {
+      var occupied = new Set();
+      state.snake.forEach(function (s) { occupied.add(key(s)); });
+      (state.mines || []).forEach(function (m) { occupied.add(key(m)); });
+      var cell = randomCell(state, occupied);
+      if (!cell) return null;
+      if (reachable(state, state.snake[0], cell)) return cell;
+    }
+    return null; // 找不到可达空格（棋盘几乎被占满/蛇身封死），按通关处理
+  }
+
+  // 放置雷：不贴蛇身/食物/蛇头四邻，并保证食物仍从蛇头可达（否则重试）。
+  // fresh=false 在现有雷基础上补到 count；fresh=true 丢弃现有雷全新分布 count 颗。
+  function placeMinesImpl(state, count, fresh) {
+    var t, i;
+    for (t = 0; t < 60; t++) {
+      var occupied = new Set();
+      state.snake.forEach(function (s) { occupied.add(key(s)); });
+      if (state.food) occupied.add(key(state.food));
+      if (!fresh) (state.mines || []).forEach(function (m) { occupied.add(key(m)); });
+      blockNearHead(state, occupied);
+      var mines = fresh ? [] : (state.mines || []).slice();
+      while (mines.length < count) {
+        var cell = randomCell(state, occupied);
+        if (!cell) break;
+        occupied.add(key(cell));
+        mines.push(cell);
+      }
+      if (state.food && !reachable(state, state.snake[0], state.food, mines)) continue;
+      return mines;
+    }
+    // 兜底：尽量放满但不再验证（极端满盘才会走到这里）
+    var occ = new Set();
+    state.snake.forEach(function (s) { occ.add(key(s)); });
+    if (state.food) occ.add(key(state.food));
+    if (!fresh) (state.mines || []).forEach(function (m) { occ.add(key(m)); });
+    blockNearHead(state, occ);
+    var out = fresh ? [] : (state.mines || []).slice();
+    for (i = 0; i < count; i++) {
+      var c = randomCell(state, occ);
+      if (!c) break;
+      occ.add(key(c));
+      out.push(c);
+    }
+    return out;
+  }
+
+  function placeMines(state, count) { return placeMinesImpl(state, count, false); }
+  function reshuffleMines(state, count) { return placeMinesImpl(state, count, true); }
+
+  function createState(opts) {
+    opts = opts || {};
+    var cols = opts.cols || 20;
+    var rows = opts.rows || 20;
+    var hx = Math.floor(cols / 2);
+    var hy = Math.floor(rows / 2);
+    var snake = [
+      { x: hx, y: hy },
+      { x: hx - 1, y: hy },
+      { x: hx - 2, y: hy }
+    ];
+    var state = {
+      cols: cols,
+      rows: rows,
+      target: (opts.target === undefined) ? 100 : opts.target, // null = 无尽，无胜利
+      maxMines: opts.maxMines || 3,
+      maxLives: opts.maxLives || 3,
+      foodScore: opts.foodScore || 10,
+      reshuffleMines: !!opts.reshuffleMines,
+      snake: snake,
+      direction: "RIGHT",
+      queue: [],
+      food: null,
+      mines: [],
+      score: 0,
+      steps: 0,
+      lives: opts.maxLives || 3,
+      status: "ready",        // ready | running | paused | won | lost
+      invincible: 0,
+      deathReason: null       // wall | self | mine
+    };
+    state.food = placeFood(state);
+    state.mines = placeMines(state, state.maxMines);
+    return state;
+  }
+
+  // 缓冲转向：禁止反向、最多缓存 2 次，保证手感顺滑。
+  function setDirection(state, dir) {
+    if (state.status === "won" || state.status === "lost") return false;
+    var last = state.queue.length ? state.queue[state.queue.length - 1] : state.direction;
+    if (dir === last || dir === OPPOSITE[last]) return false;
+    if (state.queue.length >= 2) return false;
+    state.queue.push(dir);
+    return true;
+  }
+
+  // 鼠标操控：根据目标点（网格浮点坐标）返回推荐方向，绝不返回当前方向的反向。
+  function steerToward(state, tx, ty) {
+    var head = state.snake[0];
+    var dx = tx - (head.x + 0.5);
+    var dy = ty - (head.y + 0.5);
+    if (Math.abs(dx) < 0.4 && Math.abs(dy) < 0.4) return null; // 已在目标附近
+    var cur = state.queue.length ? state.queue[state.queue.length - 1] : state.direction;
+    var primary, secondary;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      primary = dx > 0 ? "RIGHT" : "LEFT";
+      secondary = dy > 0 ? "DOWN" : "UP";
+    } else {
+      primary = dy > 0 ? "DOWN" : "UP";
+      secondary = dx > 0 ? "RIGHT" : "LEFT";
+    }
+    if (primary !== OPPOSITE[cur]) return primary;
+    if (secondary !== OPPOSITE[cur]) return secondary;
+    return null;
+  }
+
+  // 前进一格。纯状态迁移，便于单测。
+  function tick(state) {
+    if (state.status === "won" || state.status === "lost" || state.status === "paused") {
+      return state;
+    }
+    if (state.queue.length) state.direction = state.queue.shift();
+
+    var d = DIR[state.direction];
+    var head = state.snake[0];
+    var next = { x: head.x + d.x, y: head.y + d.y };
+
+    if (!inBounds(state, next.x, next.y)) {
+      state.status = "lost";
+      state.deathReason = "wall";
+      return state;
+    }
+
+    var willEat = !!state.food && next.x === state.food.x && next.y === state.food.y;
+    var body = willEat ? state.snake : state.snake.slice(0, state.snake.length - 1);
+    for (var i = 0; i < body.length; i++) {
+      if (body[i].x === next.x && body[i].y === next.y) {
+        state.status = "lost";
+        state.deathReason = "self";
+        return state;
+      }
+    }
+
+    state.steps += 1;
+
+    // 踩雷：移除该雷；非无敌状态扣 1 条命并进入短暂无敌。
+    var mi = -1;
+    for (var j = 0; j < state.mines.length; j++) {
+      if (state.mines[j].x === next.x && state.mines[j].y === next.y) { mi = j; break; }
+    }
+    if (mi >= 0) {
+      state.mines.splice(mi, 1);
+      if (state.invincible <= 0) {
+        state.lives -= 1;
+        state.invincible = 15;
+        if (state.lives <= 0) state.deathReason = "mine";
+      }
+    }
+
+    state.snake.unshift(next);
+    if (willEat) {
+      state.score += state.foodScore;
+      state.food = placeFood(state);
+      if (state.food === null) {
+        state.status = "won"; // 棋盘被占满，视为通关
+      } else if (state.reshuffleMines) {
+        state.mines = reshuffleMines(state, state.maxMines); // 无尽：雷全部重新分布
+      } else if (state.mines.length < state.maxMines) {
+        state.mines = placeMines(state, state.mines.length + 1); // 补一颗雷
+      }
+      if (state.target !== null && state.score >= state.target) state.status = "won";
+    } else {
+      state.snake.pop();
+    }
+
+    if (state.invincible > 0) state.invincible -= 1;
+    if (state.lives <= 0 && state.status !== "won") {
+      state.status = "lost";
+      if (!state.deathReason) state.deathReason = "mine";
+    }
+    if (state.status === "ready") state.status = "running";
+
+    return state;
+  }
+
+  return {
+    DIR: DIR,
+    OPPOSITE: OPPOSITE,
+    DIFFICULTIES: DIFFICULTIES,
+    createState: createState,
+    setDirection: setDirection,
+    steerToward: steerToward,
+    tick: tick,
+    reachable: reachable,
+    randomFreeCell: randomFreeCell,
+    placeFood: placeFood,
+    placeMines: placeMines,
+    reshuffleMines: reshuffleMines
+  };
+});
+
+
+(function () {
+  "use strict";
+  var core = window.SnakeCore;
+  var CFG = {"cols":20,"rows":20,"target":100,"maxMines":3,"maxLives":3,"foodScore":10,"baseInterval":140,"minInterval":70,"cell":24};
+
+  var appEl = document.getElementById("app");
+  var canvas = document.getElementById("game");
+  var ctx = canvas.getContext("2d");
+  var scoreEl = document.getElementById("score");
+  var highEl = document.getElementById("high");
+  var gamesEl = document.getElementById("games");
+  var stepsEl = document.getElementById("steps");
+  var minesEl = document.getElementById("mines");
+  var livesEl = document.getElementById("lives");
+  var targetEl = document.getElementById("target");
+  var progressEl = document.getElementById("progress");
+  var overlay = document.getElementById("overlay");
+  var overlayTitle = document.getElementById("overlay-title");
+  var overlayText = document.getElementById("overlay-text");
+  var btnNew = document.getElementById("btn-new");
+  var btnPause = document.getElementById("btn-pause");
+  var btnHistory = document.getElementById("btn-history");
+  var btnReset = document.getElementById("btn-reset");
+  var btnTheme = document.getElementById("btn-theme");
+  var historyModal = document.getElementById("history-modal");
+  var historyList = document.getElementById("history-list");
+  var historyEmpty = document.getElementById("history-empty");
+  var historyClose = document.getElementById("history-close");
+  var difficultySel = document.getElementById("difficulty");
+  var controlSel = document.getElementById("control");
+  var helpEl = document.getElementById("help");
+
+  var LS = { high: "snake_high", games: "snake_games", history: "snake_history", theme: "snake_theme" };
+
+  var currentDifficulty = "easy";
+  var controlMode = "keyboard";
+  var mouseTarget = null;
+  var state = null;
+  var from = null;
+  var lastTime = 0;
+  var acc = 0;
+  var rafId = null;
+  var cachedHigh = loadNum(LS.high, 0);
+  var cachedGames = loadNum(LS.games, 0);
+
+  function snapshot(arr) { return arr.map(function (p) { return { x: p.x, y: p.y }; }); }
+  function loadJSON(k, d) {
+    try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; }
+  }
+  function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function loadNum(k, d) { var v = parseInt(localStorage.getItem(k), 10); return isNaN(v) ? d : v; }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem(LS.theme, theme); } catch (e) {}
+    btnTheme.textContent = theme === "light" ? "☀️ 浅色" : "🌙 深色";
+  }
+  function currentTheme() {
+    return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  }
+  function toggleTheme() { applyTheme(currentTheme() === "dark" ? "light" : "dark"); }
+
+  function interval() {
+    var foods = Math.floor(state.score / CFG.foodScore);
+    var iv = CFG.baseInterval - foods * 5;
+    return Math.max(CFG.minInterval, iv);
+  }
+
+  // 按难度合成一份完整配置（easy 取生成器基线，其余取固定预设）。
+  function optsFor(name) {
+    var d = core.DIFFICULTIES[name] || core.DIFFICULTIES.easy;
+    return {
+      cols: d.cols || CFG.cols,
+      rows: d.rows || CFG.rows,
+      target: d.target !== undefined ? d.target : CFG.target,
+      maxMines: d.maxMines != null ? d.maxMines : CFG.maxMines,
+      reshuffleMines: !!d.reshuffleMines,
+      maxLives: CFG.maxLives,
+      foodScore: CFG.foodScore,
+      baseInterval: CFG.baseInterval,
+      minInterval: CFG.minInterval,
+      cell: CFG.cell
+    };
+  }
+
+  function setupCanvas() {
+    canvas.width = state.cols * CFG.cell;
+    canvas.height = state.rows * CFG.cell;
+    appEl.style.maxWidth = Math.min(state.cols * CFG.cell + 24, 1200) + "px";
+  }
+
+  function renderStats() {
+    scoreEl.textContent = String(state.score);
+    highEl.textContent = String(cachedHigh);
+    gamesEl.textContent = String(cachedGames);
+    stepsEl.textContent = String(state.steps);
+    minesEl.textContent = String(state.mines.length);
+    livesEl.textContent = state.lives + "/" + state.maxLives;
+    if (state.target == null) {
+      targetEl.textContent = "∞";
+      progressEl.style.width = "0%";
+    } else {
+      targetEl.textContent = String(state.target);
+      var pct = clamp(Math.round(state.score / state.target * 100), 0, 100);
+      progressEl.style.width = pct + "%";
+    }
+  }
+
+  function difficultyDesc() {
+    if (currentDifficulty === "endless") {
+      return "无尽模式 · 分数无上限，吃到食物雷会重新分布";
+    }
+    var d = core.DIFFICULTIES[currentDifficulty];
+    return "难度 " + d.label + " · 目标 " + state.target + " 分 · " + state.maxMines + " 雷";
+  }
+  function controlHint() {
+    return controlMode === "mouse" ? "移动鼠标操控，蛇会朝光标方向移动" : "方向键 / WASD 移动，空格暂停";
+  }
+
+  function updateOverlay() {
+    var reasonMap = { wall: "撞墙了", self: "咬到自己了", mine: "踩到雷了" };
+    if (state.status === "running") { overlay.classList.add("hidden"); return; }
+    overlay.classList.remove("hidden");
+    if (state.status === "ready") {
+      overlayTitle.textContent = "🐍 贪吃蛇";
+      overlayText.textContent = difficultyDesc() + "\n" + controlHint() + "\n按 Enter 或点击「新一局」开始";
+    } else if (state.status === "paused") {
+      overlayTitle.textContent = "⏸ 已暂停";
+      overlayText.textContent = "按 空格 或「继续」恢复游戏";
+    } else if (state.status === "won") {
+      overlayTitle.textContent = "🎉 通关！";
+      overlayText.textContent = "得分 " + state.score + " · 步数 " + state.steps + "\n按 Enter 或「新一局」再来一局";
+    } else if (state.status === "lost") {
+      var why = reasonMap[state.deathReason] ? "（" + reasonMap[state.deathReason] + "）" : "";
+      overlayTitle.textContent = "💥 游戏结束" + why;
+      overlayText.textContent = "得分 " + state.score + " · 步数 " + state.steps + "\n按 Enter 或「新一局」再来一局";
+    }
+  }
+
+  function updatePauseBtn() {
+    btnPause.textContent = state.status === "paused" ? "继续" : "暂停";
+  }
+
+  function updateHelp() {
+    helpEl.textContent = controlMode === "mouse"
+      ? "鼠标：蛇朝光标方向移动 · 点击棋盘开局 · 空格 暂停 · Enter 重开 · 别碰墙、自己或雷"
+      : "方向键 / WASD 移动 · 空格 暂停 · Enter 重开 · 吃到食物得分 · 别碰墙、自己或雷 · 达到目标分通关";
+  }
+
+  function renderHistory() {
+    var hist = loadJSON(LS.history, []);
+    historyList.innerHTML = "";
+    historyEmpty.style.display = hist.length ? "none" : "block";
+    hist.forEach(function (r) {
+      var li = document.createElement("li");
+      var left = document.createElement("span");
+      left.textContent = "局 " + r.score + " 分 · " + r.steps + " 步 · " + r.date;
+      var badge = document.createElement("span");
+      badge.className = "badge " + (r.result === "胜" ? "win" : "lose");
+      badge.textContent = r.result;
+      li.appendChild(left);
+      li.appendChild(badge);
+      historyList.appendChild(li);
+    });
+  }
+
+  function openHistory() { historyModal.classList.remove("hidden"); renderHistory(); }
+  function closeHistory() { historyModal.classList.add("hidden"); }
+
+  function populateDifficulty() {
+    var names = Object.keys(core.DIFFICULTIES);
+    difficultySel.innerHTML = "";
+    names.forEach(function (name) {
+      var opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = core.DIFFICULTIES[name].label;
+      difficultySel.appendChild(opt);
+    });
+    difficultySel.value = currentDifficulty;
+  }
+
+  function newGame(run) {
+    state = core.createState(optsFor(currentDifficulty));
+    if (run) state.status = "running";
+    from = snapshot(state.snake);
+    acc = 0;
+    setupCanvas();
+    renderStats();
+    updateOverlay();
+    updatePauseBtn();
+    updateHelp();
+  }
+
+  function togglePause() {
+    if (state.status === "ready") state.status = "running";
+    else if (state.status === "running") state.status = "paused";
+    else if (state.status === "paused") state.status = "running";
+    acc = 0;
+    updateOverlay();
+    updatePauseBtn();
+  }
+
+  function resetRecords() {
+    var ok = window.confirm("确定清空最高分、局数和最近 10 局记录吗？此操作不可撤销。");
+    if (!ok) return;
+    try {
+      localStorage.removeItem(LS.high);
+      localStorage.removeItem(LS.games);
+      localStorage.removeItem(LS.history);
+    } catch (e) {}
+    cachedHigh = 0;
+    cachedGames = 0;
+    renderStats();
+    renderHistory();
+    newGame(false);
+  }
+
+  function onGameEnd() {
+    if (state._recorded) return;
+    state._recorded = true;
+    cachedGames += 1;
+    if (state.score > cachedHigh) cachedHigh = state.score;
+    try {
+      localStorage.setItem(LS.high, String(cachedHigh));
+      localStorage.setItem(LS.games, String(cachedGames));
+      var hist = loadJSON(LS.history, []);
+      hist.unshift({ result: state.status === "won" ? "胜" : "负", score: state.score, steps: state.steps, date: new Date().toLocaleString() });
+      if (hist.length > 10) hist.length = 10;
+      saveJSON(LS.history, hist);
+    } catch (e) {}
+    renderStats();
+    renderHistory();
+    updateOverlay();
+    updatePauseBtn();
+  }
+
+  function lerp(a, b, p) { return a + (b - a) * p; }
+
+  function draw() {
+    var cell = canvas.width / state.cols;
+    var W = canvas.width, H = canvas.height;
+    ctx.fillStyle = cssVar("--board-bg");
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = cssVar("--grid-line");
+    ctx.lineWidth = 1;
+    var i;
+    for (i = 0; i <= state.cols; i++) { ctx.beginPath(); ctx.moveTo(i * cell + 0.5, 0); ctx.lineTo(i * cell + 0.5, H); ctx.stroke(); }
+    for (i = 0; i <= state.rows; i++) { ctx.beginPath(); ctx.moveTo(0, i * cell + 0.5); ctx.lineTo(W, i * cell + 0.5); ctx.stroke(); }
+    if (state.food) drawFood(state.food, cell);
+    for (i = 0; i < state.mines.length; i++) drawMine(state.mines[i], cell);
+    drawSnake(cell);
+  }
+
+  function drawFood(f, cell) {
+    var cx = f.x * cell + cell / 2, cy = f.y * cell + cell / 2;
+    ctx.fillStyle = cssVar("--food");
+    ctx.beginPath(); ctx.arc(cx, cy, cell * 0.36, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.beginPath(); ctx.arc(cx - cell * 0.1, cy - cell * 0.12, cell * 0.1, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawMine(m, cell) {
+    var cx = m.x * cell + cell / 2, cy = m.y * cell + cell / 2, r = cell * 0.34;
+    ctx.fillStyle = cssVar("--mine");
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = cssVar("--mine-ring");
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - r * 0.5, cy - r * 0.5); ctx.lineTo(cx + r * 0.5, cy + r * 0.5);
+    ctx.moveTo(cx + r * 0.5, cy - r * 0.5); ctx.lineTo(cx - r * 0.5, cy + r * 0.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + r * 0.45, cy - r * 0.85); ctx.lineTo(cx + r * 0.45, cy - r * 1.25);
+    ctx.stroke();
+  }
+
+  function drawSnake(cell) {
+    var p = state.status === "running" ? clamp(acc / interval(), 0, 1) : 1;
+    var body = state.snake;
+    var prev = from || body;
+    var pts = [];
+    var i;
+    for (i = 0; i < body.length; i++) {
+      var to = body[i];
+      var f = prev[i] || to;
+      pts.push({ x: lerp(f.x, to.x, p) * cell + cell / 2, y: lerp(f.y, to.y, p) * cell + cell / 2 });
+    }
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = cssVar("--snake");
+    ctx.lineWidth = cell * 0.72;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+
+    var head = pts[0];
+    var alpha = 1;
+    if (state.invincible > 0 && state.status === "running") {
+      alpha = (Math.floor(Date.now() / 120) % 2 === 0) ? 0.35 : 1;
+    }
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = cssVar("--snake-head");
+    ctx.beginPath(); ctx.arc(head.x, head.y, cell * 0.46, 0, Math.PI * 2); ctx.fill();
+
+    var d = core.DIR[state.direction] || { x: 1, y: 0 };
+    var ex = head.x + d.x * cell * 0.16, ey = head.y + d.y * cell * 0.16;
+    var px = -d.y, py = d.x;
+    ctx.fillStyle = "#0b1220";
+    ctx.beginPath(); ctx.arc(ex + px * cell * 0.16, ey + py * cell * 0.16, cell * 0.09, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(ex - px * cell * 0.16, ey - py * cell * 0.16, cell * 0.09, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function loop(now) {
+    var dt = Math.min(now - lastTime, 200);
+    lastTime = now;
+    if (state.status === "running") {
+      if (controlMode === "mouse" && mouseTarget) {
+        var md = core.steerToward(state, mouseTarget.gx, mouseTarget.gy);
+        if (md) core.setDirection(state, md);
+      }
+      acc += dt;
+      var iv = interval();
+      while (acc >= iv) {
+        from = snapshot(state.snake);
+        core.tick(state);
+        acc -= iv;
+        if (state.status === "won" || state.status === "lost") {
+          acc = 0;
+          onGameEnd();
+          break;
+        }
+        iv = interval();
+      }
+    }
+    renderStats();
+    draw();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function canvasGridPos(e) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+      gx: (e.clientX - rect.left) / rect.width * state.cols,
+      gy: (e.clientY - rect.top) / rect.height * state.rows
+    };
+  }
+
+  document.addEventListener("keydown", function (e) {
+    var k = e.key;
+
+    // 修复：胜负后只有 Enter 重开，其余键不再误触发重开。
+    if (k === "Enter") {
+      e.preventDefault();
+      if (state.status === "ready" || state.status === "won" || state.status === "lost") newGame(true);
+      return;
+    }
+    if (k === "Escape") { closeHistory(); return; }
+
+    if (k === " " || k === "Spacebar") {
+      e.preventDefault();
+      if (state.status === "running" || state.status === "paused" || state.status === "ready") togglePause();
+      return;
+    }
+
+    if (controlMode !== "keyboard") return; // 鼠标模式下方向键不生效
+
+    var dir = null;
+    if (k === "ArrowUp" || k === "w" || k === "W") dir = "UP";
+    else if (k === "ArrowDown" || k === "s" || k === "S") dir = "DOWN";
+    else if (k === "ArrowLeft" || k === "a" || k === "A") dir = "LEFT";
+    else if (k === "ArrowRight" || k === "d" || k === "D") dir = "RIGHT";
+
+    if (dir) {
+      e.preventDefault();
+      if (state.status === "won" || state.status === "lost") return; // 修复：胜负后方向键不重开
+      if (state.status === "ready") { state.status = "running"; updateOverlay(); updatePauseBtn(); }
+      core.setDirection(state, dir);
+    }
+  });
+
+  canvas.addEventListener("mousemove", function (e) { mouseTarget = canvasGridPos(e); });
+  canvas.addEventListener("mousedown", function () {
+    if (controlMode === "mouse" && state.status === "ready") {
+      state.status = "running";
+      updateOverlay();
+      updatePauseBtn();
+    }
+  });
+
+  btnNew.addEventListener("click", function () { newGame(true); });
+  btnPause.addEventListener("click", togglePause);
+  btnHistory.addEventListener("click", openHistory);
+  btnReset.addEventListener("click", resetRecords);
+  btnTheme.addEventListener("click", toggleTheme);
+  historyClose.addEventListener("click", closeHistory);
+  historyModal.addEventListener("click", function (e) { if (e.target === historyModal) closeHistory(); });
+  difficultySel.addEventListener("change", function () {
+    currentDifficulty = difficultySel.value;
+    newGame(false);
+  });
+  controlSel.addEventListener("change", function () {
+    controlMode = controlSel.value || "keyboard";
+    updateHelp();
+    updateOverlay();
+  });
+
+  // 调试/测试钩子（只读状态 + 受控切换）。
+  window.SnakeApp = {
+    getState: function () { return state; },
+    getControlMode: function () { return controlMode; },
+    setControlMode: function (m) { controlMode = m; updateHelp(); },
+    getDifficulty: function () { return currentDifficulty; },
+    setDifficulty: function (d) { currentDifficulty = d; difficultySel.value = d; newGame(false); },
+    newGame: newGame
+  };
+
+  applyTheme(currentTheme());
+  controlMode = controlSel.value || "keyboard";
+  populateDifficulty();
+  newGame(false);
+  rafId = requestAnimationFrame(loop);
+})();
+
+</script>
+</body>
+</html>
