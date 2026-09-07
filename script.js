@@ -37,3 +37,34 @@ links?.addEventListener('click', (event) => {
 tabs.forEach((tab) => tab.addEventListener('click', () => selectPanel(tab.dataset.panel)));
 
 document.querySelector('#year').textContent = new Date().getFullYear();
+
+/* ===== 浅色 / 深色主题切换（默认浅色） ===== */
+const themeToggle = document.querySelector('#theme-toggle');
+const rootEl = document.documentElement;
+
+function paintThemeToggle() {
+  if (!themeToggle) return;
+  const dark = rootEl.classList.contains('theme-dark');
+  themeToggle.textContent = dark ? '☀️ 浅色' : '🌙 深色';
+  themeToggle.setAttribute('aria-pressed', String(dark));
+  const label = dark ? '切换到浅色模式' : '切换到深色模式';
+  themeToggle.setAttribute('aria-label', label);
+  themeToggle.title = label;
+}
+
+function applyTheme(dark) {
+  rootEl.classList.toggle('theme-dark', dark);
+  paintThemeToggle();
+}
+
+function savedTheme() {
+  try { return localStorage.getItem('page-theme'); } catch { return null; }
+}
+
+applyTheme(savedTheme() === 'dark');
+
+themeToggle?.addEventListener('click', () => {
+  const dark = !rootEl.classList.contains('theme-dark');
+  applyTheme(dark);
+  try { localStorage.setItem('page-theme', dark ? 'dark' : 'light'); } catch { /* ignore */ }
+});

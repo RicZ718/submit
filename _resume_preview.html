@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif; color: #3f2f3a; }
+
+  .sheet { width: 210mm; height: 297mm; background: #fffefd; padding: 10mm; position: relative; }
+  .frame { position: relative; width: 100%; height: 100%; border: 1px solid #d9c1ca; }
+  .inner { position: absolute; inset: 4mm; border: 1px solid #eedce1; padding: 12mm 13mm 10mm; display: flex; flex-direction: column; }
+
+  /* 角落小花饰 */
+  .corner { position: absolute; width: 8mm; height: 8mm; pointer-events: none; }
+  .corner::before, .corner::after { content: ""; position: absolute; }
+  .corner::before { border: 0 solid #b98c9c; }
+  .corner::after { width: 1.6mm; height: 1.6mm; background: #d3a9b4; border-radius: 50%; }
+  .c-tl { top: -1px; left: -1px; }
+  .c-tl::before { width: 7mm; height: 7mm; border-top-width: 1.2px; border-left-width: 1.2px; }
+  .c-tl::after { top: 6.1mm; left: 6.1mm; }
+  .c-tr { top: -1px; right: -1px; }
+  .c-tr::before { width: 7mm; height: 7mm; border-top-width: 1.2px; border-right-width: 1.2px; right: 0; }
+  .c-tr::after { top: 6.1mm; right: 6.1mm; }
+  .c-bl { bottom: -1px; left: -1px; }
+  .c-bl::before { width: 7mm; height: 7mm; border-bottom-width: 1.2px; border-left-width: 1.2px; bottom: 0; }
+  .c-bl::after { bottom: 6.1mm; left: 6.1mm; }
+  .c-br { bottom: -1px; right: -1px; }
+  .c-br::before { width: 7mm; height: 7mm; border-bottom-width: 1.2px; border-right-width: 1.2px; right: 0; bottom: 0; }
+  .c-br::after { bottom: 6.1mm; right: 6.1mm; }
+
+  /* 页眉 */
+  .hero { text-align: center; padding-top: 3mm; }
+  .eyebrow { font-size: 9.5pt; letter-spacing: .52em; color: #a2657e; font-weight: 600; text-transform: uppercase; margin-left: .52em; }
+  h1 { font-size: 40pt; font-weight: 600; letter-spacing: .32em; margin: 6mm 0 0 .32em; color: #362a33; font-family: "SimSun", "STSong", "Songti SC", serif; }
+  .sub { margin-top: 4mm; color: #7d6a75; font-size: 11pt; letter-spacing: .14em; }
+  .sub b { color: #362a33; font-weight: 700; }
+  .head-orn { display: flex; align-items: center; justify-content: center; gap: 4mm; margin-top: 5mm; }
+  .head-orn .line { width: 34mm; height: 1px; background: linear-gradient(90deg, transparent, #cdb2bb); }
+  .head-orn .line:last-child { background: linear-gradient(90deg, #cdb2bb, transparent); }
+  .head-orn .diamond { width: 5px; height: 5px; background: #b98c9c; transform: rotate(45deg); }
+
+  /* 章节 */
+  section { margin-top: 8mm; }
+  .sec-title { display: flex; align-items: center; gap: 3.5mm; }
+  .sec-title .no { color: #c79aa6; font-family: Georgia, serif; font-style: italic; font-size: 12pt; }
+  .sec-title h2 { font-size: 13.5pt; letter-spacing: .42em; color: #45323d; font-weight: 700; margin-left: .42em; white-space: nowrap; font-family: "SimSun", "STSong", serif; }
+  .sec-title .rule { flex: 1; height: 1px; background: #e6d3d9; }
+  .sec-title .dot { width: 4px; height: 4px; background: #d3a9b4; border-radius: 50%; }
+
+  .dl { margin-top: 4.5mm; }
+  .row { display: flex; align-items: baseline; padding: 2.6mm 0; }
+  .row + .row { border-top: 1px dashed #eedce1; }
+  .row .k { width: 24mm; flex: none; color: #9c8693; font-size: 10.5pt; letter-spacing: .2em; }
+  .row .v { color: #43323c; font-size: 11pt; letter-spacing: .06em; }
+
+  /* 兴趣三栏 */
+  .interests { margin-top: 5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+  .int-item { padding: 0 4.5mm; }
+  .int-item:first-child { padding-left: 0; }
+  .int-item:last-child { padding-right: 0; }
+  .int-item + .int-item { border-left: 1px dashed #eedce1; }
+  .int-item h3 { font-size: 11.5pt; color: #a2657e; letter-spacing: .24em; margin-bottom: 2.4mm; font-weight: 700; }
+  .int-item p { font-size: 9.5pt; line-height: 1.9; color: #6b5a64; text-align: justify; }
+
+  /* 联系方式 */
+  .contacts { margin-top: 4.5mm; display: grid; grid-template-columns: 1fr 1fr; column-gap: 10mm; }
+  .c-item { display: flex; align-items: baseline; gap: 4mm; padding: 2.4mm 0; }
+  .c-item + .c-item { border-top: 1px dashed #eedce1; }
+  .c-item .k { color: #a2657e; flex: none; font-size: 10pt; letter-spacing: .12em; min-width: 13mm; font-weight: 700; }
+  .c-item .v { color: #43323c; font-size: 10pt; letter-spacing: .04em; }
+  .c-item .v small { color: #9c8693; }
+
+  .foot { margin-top: auto; text-align: center; padding-top: 6mm; }
+  .foot .line { display: inline-flex; align-items: center; gap: 3mm; }
+  .foot .line i { display: inline-block; width: 3px; height: 3px; background: #cf9fae; transform: rotate(45deg); }
+  .foot .line span { width: 26mm; height: 1px; background: linear-gradient(90deg, transparent, #d9bfc8); }
+  .foot .line span:last-child { background: linear-gradient(90deg, #d9bfc8, transparent); }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="frame">
+      <div class="inner">
+        <span class="corner c-tl"></span><span class="corner c-tr"></span>
+        <span class="corner c-bl"></span><span class="corner c-br"></span>
+
+        <header class="hero">
+          <p class="eyebrow">Personal Profile</p>
+          <h1>曾睿哲</h1>
+          <p class="sub"><b>广东工业大学</b>&nbsp;·&nbsp;集成电路制造与集成设计专业&nbsp;·&nbsp;大一新生</p>
+          <div class="head-orn"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
+        </header>
+
+        <section>
+          <div class="sec-title"><span class="no">01</span><h2>专业背景</h2><span class="dot"></span><span class="rule"></span></div>
+          <div class="dl">
+            <div class="row"><span class="k">学　校</span><span class="v">广东工业大学</span></div>
+            <div class="row"><span class="k">专　业</span><span class="v">集成电路制造与集成设计</span></div>
+            <div class="row"><span class="k">阶　段</span><span class="v">本科一年级新生</span></div>
+          </div>
+        </section>
+
+        <section>
+          <div class="sec-title"><span class="no">02</span><h2>兴趣爱好</h2><span class="dot"></span><span class="rule"></span></div>
+          <div class="interests">
+            <div class="int-item">
+              <h3>运 动</h3>
+              <p>精通篮球、羽毛球、乒乓球、长跑与游泳，对其他运动也乐于尝试与了解。</p>
+            </div>
+            <div class="int-item">
+              <h3>观 影</h3>
+              <p>热衷电影、动漫与影视剧，喜欢收藏触动内心的作品，并写下自己的影评。</p>
+            </div>
+            <div class="int-item">
+              <h3>旅 行</h3>
+              <p>乐于探寻国内外风景独特之处，用镜头与文字记录沿途所见的精彩。</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div class="sec-title"><span class="no">03</span><h2>联系方式</h2><span class="dot"></span><span class="rule"></span></div>
+          <div class="contacts">
+            <div class="c-item"><span class="k">电　话</span><span class="v">19576567810 <small>/</small> 13610064130</span></div>
+            <div class="c-item"><span class="k">微　信</span><span class="v">z064130_</span></div>
+            <div class="c-item"><span class="k">邮　箱</span><span class="v">zengruizhe20071008@163.com</span></div>
+            <div class="c-item"><span class="k">邮　箱</span><span class="v">ricrz718@gmail.com</span></div>
+            <div class="c-item"><span class="k">Q　Q</span><span class="v">2712726262</span></div>
+            <div class="c-item"><span class="k">社交媒体</span><span class="v">小红书 · Instagram · Twitter</span></div>
+          </div>
+        </section>
+
+        <footer class="foot">
+          <div class="line"><span></span><i></i><span></span></div>
+        </footer>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -12,11 +12,14 @@
     <header class="site-header">
       <nav class="nav container" aria-label="主导航">
         <a class="brand" href="#home">个人主页</a>
-        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-links">菜单</button>
         <div class="nav-links" id="nav-links">
           <a href="#profile" data-panel-target="basic">基本信息</a>
           <a href="#profile" data-panel-target="interests">兴趣爱好</a>
           <a href="#profile" data-panel-target="contact">联系我</a>
+        </div>
+        <div class="nav-actions">
+          <button class="theme-toggle" type="button" id="theme-toggle" aria-pressed="false" aria-label="切换到深色模式">🌙 深色</button>
+          <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-links">菜单</button>
         </div>
       </nav>
     </header>
@@ -45,13 +48,12 @@
             <article class="profile-panel card" id="basic-panel" role="tabpanel" aria-labelledby="basic-tab" data-panel-content="basic">
               <dl class="facts">
                 <div><dt>姓名</dt><dd>曾睿哲</dd></div>
-                <div><dt>年级</dt><dd>大一新生</dd></div>
+                <div><dt>性别</dt><dd>男</dd></div>
+                <div><dt>出生日期</dt><dd>2007/10/08</dd></div>
                 <div><dt>学校</dt><dd>广东工业大学</dd></div>
                 <div><dt>专业</dt><dd>集成电路制造与集成设计</dd></div>
                 <div><dt>毕业高中</dt><dd>广州市执信中学</dd></div>
                 <div><dt>住址</dt><dd>广州市番禺区</dd></div>
-                <div><dt>出生日期</dt><dd>2007/10/08</dd></div>
-                <div><dt>性别</dt><dd>男</dd></div>
               </dl>
             </article>
 
