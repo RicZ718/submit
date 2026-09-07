@@ -60,6 +60,9 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
 .btn:active { transform: scale(.97); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #04121f; font-weight: 700; }
 .btn.danger { color: var(--danger); }
+.demo-banner { background: var(--accent); color: #04121f; font-weight: 700; text-align: center;
+  padding: 8px 12px; border-radius: 10px; font-size: 14px; }
+.demo-banner.hidden { display: none; }
 .help { margin: 0; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.7; }
 .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); display: flex;
   align-items: center; justify-content: center; padding: 16px; z-index: 50; }
@@ -112,6 +115,8 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     </label>
   </div>
 
+  <div id="demo-banner" class="demo-banner hidden">🤖 AI 演示进行中 · 目标：连吃 20 个食物</div>
+
   <div class="stats">
     <div class="stat"><span class="label">得分</span><span class="value" id="score">0</span></div>
     <div class="stat"><span class="label">最高分</span><span class="value" id="high">0</span></div>
@@ -137,6 +142,7 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
   </div>
 
   <div class="controls">
+    <button id="btn-demo" class="btn" type="button">🤖 AI 演示</button>
     <button id="btn-new" class="btn primary" type="button">新一局</button>
     <button id="btn-pause" class="btn" type="button">暂停</button>
     <button id="btn-history" class="btn" type="button">历史记录</button>
@@ -210,6 +216,18 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     }
   }
 
+  // 食物 3×3 邻域也排除，避免雷紧贴食物形成「赢不了」的死局。
+  function blockNearFood(state, occupied) {
+    if (!state.food) return;
+    var f = state.food;
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        var x = f.x + dx, y = f.y + dy;
+        if (inBounds(state, x, y)) occupied.add(x + "," + y);
+      }
+    }
+  }
+
   function randomFreeCell(state) {
     var occupied = new Set();
     state.snake.forEach(function (s) { occupied.add(key(s)); });
@@ -243,17 +261,42 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     return false;
   }
 
-  // 放置食物：优先取「从蛇头可达」的空格，保证食物不会因雷/蛇身被隔死。
+  // 某格 3×3 邻域内是否有雷。
+  function mineNear(state, cell) {
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        var nx = cell.x + dx, ny = cell.y + dy;
+        for (var i = 0; i < state.mines.length; i++) {
+          if (state.mines[i].x === nx && state.mines[i].y === ny) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // 放置食物：优先取「不贴墙 + 周围 1 格无雷 + 从蛇头可达」的空格，
+  // 避免食物落入角落/雷包而变成赢不了的死局。
   function placeFood(state) {
-    for (var t = 0; t < 60; t++) {
+    for (var t = 0; t < 200; t++) {
       var occupied = new Set();
       state.snake.forEach(function (s) { occupied.add(key(s)); });
       (state.mines || []).forEach(function (m) { occupied.add(key(m)); });
       var cell = randomCell(state, occupied);
       if (!cell) return null;
+      if (cell.x < 1 || cell.x > state.cols - 2 || cell.y < 1 || cell.y > state.rows - 2) continue; // 不贴墙
+      if (mineNear(state, cell)) continue; // 周围 1 格无雷
       if (reachable(state, state.snake[0], cell)) return cell;
     }
-    return null; // 找不到可达空格（棋盘几乎被占满/蛇身封死），按通关处理
+    // 兜底：仅要求可达（小棋盘/极端情况）
+    for (var t2 = 0; t2 < 60; t2++) {
+      var occupied2 = new Set();
+      state.snake.forEach(function (s) { occupied2.add(key(s)); });
+      (state.mines || []).forEach(function (m) { occupied2.add(key(m)); });
+      var cell2 = randomCell(state, occupied2);
+      if (!cell2) return null;
+      if (reachable(state, state.snake[0], cell2)) return cell2;
+    }
+    return null;
   }
 
   // 放置雷：不贴蛇身/食物/蛇头四邻，并保证食物仍从蛇头可达（否则重试）。
@@ -266,6 +309,7 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
       if (state.food) occupied.add(key(state.food));
       if (!fresh) (state.mines || []).forEach(function (m) { occupied.add(key(m)); });
       blockNearHead(state, occupied);
+      blockNearFood(state, occupied);
       var mines = fresh ? [] : (state.mines || []).slice();
       while (mines.length < count) {
         var cell = randomCell(state, occupied);
@@ -282,6 +326,7 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     if (state.food) occ.add(key(state.food));
     if (!fresh) (state.mines || []).forEach(function (m) { occ.add(key(m)); });
     blockNearHead(state, occ);
+    blockNearFood(state, occ);
     var out = fresh ? [] : (state.mines || []).slice();
     for (i = 0; i < count; i++) {
       var c = randomCell(state, occ);
@@ -430,6 +475,141 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     return state;
   }
 
+  // 返回从 from 出发、走第一步的方向即可达 to 的方向（BFS，不返回完整路径）。
+  function bfsFirstStep(state, from, to, blocked) {
+    var dirs = [[1, 0, "RIGHT"], [-1, 0, "LEFT"], [0, 1, "DOWN"], [0, -1, "UP"]];
+    var queue = [];
+    var seen = new Set();
+    seen.add(key(from));
+    for (var i = 0; i < dirs.length; i++) {
+      var nx = from.x + dirs[i][0], ny = from.y + dirs[i][1];
+      var k = nx + "," + ny;
+      if (!inBounds(state, nx, ny) || blocked.has(k)) continue;
+      if (nx === to.x && ny === to.y) return dirs[i][2];
+      seen.add(k);
+      queue.push({ x: nx, y: ny, first: dirs[i][2] });
+    }
+    while (queue.length) {
+      var cur = queue.shift();
+      for (var j = 0; j < dirs.length; j++) {
+        var nx2 = cur.x + dirs[j][0], ny2 = cur.y + dirs[j][1];
+        var k2 = nx2 + "," + ny2;
+        if (!inBounds(state, nx2, ny2) || blocked.has(k2) || seen.has(k2)) continue;
+        if (nx2 === to.x && ny2 === to.y) return cur.first;
+        seen.add(k2);
+        queue.push({ x: nx2, y: ny2, first: cur.first });
+      }
+    }
+    return null;
+  }
+
+  // 从 (x, y) 出发能走到的空格数量（BFS 洪泛）。
+  function floodArea(state, x, y, blocked) {
+    var queue = [{ x: x, y: y }];
+    var seen = new Set();
+    seen.add(x + "," + y);
+    var area = 0;
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    while (queue.length) {
+      var cur = queue.shift();
+      area++;
+      for (var i = 0; i < dirs.length; i++) {
+        var nx = cur.x + dirs[i][0], ny = cur.y + dirs[i][1];
+        var k = nx + "," + ny;
+        if (!inBounds(state, nx, ny) || blocked.has(k) || seen.has(k)) continue;
+        seen.add(k);
+        queue.push({ x: nx, y: ny });
+      }
+    }
+    return area;
+  }
+
+  // 从 from 到 to 是否有通路（blocked 为显式障碍集合；to 不在 blocked 中）。
+  function canReach(state, from, to, blocked) {
+    var queue = [from];
+    var seen = new Set();
+    seen.add(key(from));
+    while (queue.length) {
+      var cur = queue.shift();
+      if (cur.x === to.x && cur.y === to.y) return true;
+      var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      for (var i = 0; i < dirs.length; i++) {
+        var nx = cur.x + dirs[i][0], ny = cur.y + dirs[i][1];
+        var k = nx + "," + ny;
+        if (!inBounds(state, nx, ny) || blocked.has(k) || seen.has(k)) continue;
+        seen.add(k);
+        queue.push({ x: nx, y: ny });
+      }
+    }
+    return false;
+  }
+
+  // 判断某方向是否「安全」：不撞墙/雷/自身，且走完后蛇头仍能回到尾巴（不会被逼死）。
+  function isSafeMove(state, dir) {
+    var d = DIR[dir];
+    var head = state.snake[0];
+    var nx = head.x + d.x, ny = head.y + d.y;
+    if (!inBounds(state, nx, ny)) return false;
+    var willEat = !!state.food && nx === state.food.x && ny === state.food.y;
+    var newSnake = [{ x: nx, y: ny }].concat(state.snake);
+    if (!willEat) newSnake.pop();
+    for (var i = 1; i < newSnake.length; i++) {
+      if (newSnake[i].x === nx && newSnake[i].y === ny) return false; // 自身碰撞
+    }
+    for (var j = 0; j < state.mines.length; j++) {
+      if (state.mines[j].x === nx && state.mines[j].y === ny) return false; // 踩雷
+    }
+    var tail = newSnake[newSnake.length - 1];
+    var blocked = new Set();
+    for (var k = 0; k < newSnake.length - 1; k++) blocked.add(key(newSnake[k]));
+    for (var m = 0; m < state.mines.length; m++) blocked.add(key(state.mines[m]));
+    return canReach(state, { x: nx, y: ny }, tail, blocked); // 蛇头仍可达尾巴
+  }
+
+  // AI 自动控制：最短安全路径去食物；不可达/不安全时向「可活动空间最大」处绕行。
+  function autoMove(state) {
+    if (!state.food) return null;
+    var head = state.snake[0];
+    var blocked = new Set();
+    for (var i = 0; i < state.snake.length - 1; i++) blocked.add(key(state.snake[i]));
+    for (var j = 0; j < state.mines.length; j++) blocked.add(key(state.mines[j]));
+    var curDir = state.queue.length ? state.queue[state.queue.length - 1] : state.direction;
+    var rev = OPPOSITE[curDir];
+    if (rev) {
+      var rd = DIR[rev];
+      var rx = head.x + rd.x, ry = head.y + rd.y;
+      if (inBounds(state, rx, ry)) blocked.add(rx + "," + ry);
+    }
+
+    var dirs = [[1, 0, "RIGHT"], [-1, 0, "LEFT"], [0, 1, "DOWN"], [0, -1, "UP"]];
+
+    // 1) 最短安全路径去食物
+    var dir = bfsFirstStep(state, head, state.food, blocked);
+    if (dir && isSafeMove(state, dir)) return dir;
+
+    // 2) 安全方向里，选「可活动空间最大」者（远离死角，绕行等待机会）
+    var best = null, bestArea = -1;
+    for (var k = 0; k < dirs.length; k++) {
+      if (dirs[k][2] === rev) continue;
+      if (!isSafeMove(state, dirs[k][2])) continue;
+      var nx = head.x + dirs[k][0], ny = head.y + dirs[k][1];
+      var area = floodArea(state, nx, ny, blocked);
+      if (area > bestArea) { bestArea = area; best = dirs[k][2]; }
+    }
+    if (best) return best;
+
+    // 3) 兜底：不做安全校验，最大活动空间
+    bestArea = -1;
+    for (var k2 = 0; k2 < dirs.length; k2++) {
+      var nx2 = head.x + dirs[k2][0], ny2 = head.y + dirs[k2][1];
+      var kk2 = nx2 + "," + ny2;
+      if (!inBounds(state, nx2, ny2) || blocked.has(kk2)) continue;
+      var area2 = floodArea(state, nx2, ny2, blocked);
+      if (area2 > bestArea) { bestArea = area2; best = dirs[k2][2]; }
+    }
+    return best;
+  }
+
   return {
     DIR: DIR,
     OPPOSITE: OPPOSITE,
@@ -442,7 +622,8 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     randomFreeCell: randomFreeCell,
     placeFood: placeFood,
     placeMines: placeMines,
-    reshuffleMines: reshuffleMines
+    reshuffleMines: reshuffleMines,
+    autoMove: autoMove
   };
 });
 
@@ -471,6 +652,8 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
   var btnHistory = document.getElementById("btn-history");
   var btnReset = document.getElementById("btn-reset");
   var btnTheme = document.getElementById("btn-theme");
+  var btnDemo = document.getElementById("btn-demo");
+  var demoBanner = document.getElementById("demo-banner");
   var historyModal = document.getElementById("history-modal");
   var historyList = document.getElementById("history-list");
   var historyEmpty = document.getElementById("history-empty");
@@ -484,6 +667,9 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
   var currentDifficulty = "easy";
   var controlMode = "keyboard";
   var mouseTarget = null;
+  var DEMO_FOODS = 20;
+  var demoMode = false;
+  var demoState = "idle"; // idle | running | done | failed
   var state = null;
   var from = null;
   var lastTime = 0;
@@ -512,6 +698,7 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
   function toggleTheme() { applyTheme(currentTheme() === "dark" ? "light" : "dark"); }
 
   function interval() {
+    if (demoMode) return 40;
     var foods = Math.floor(state.score / CFG.foodScore);
     var iv = CFG.baseInterval - foods * 5;
     return Math.max(CFG.minInterval, iv);
@@ -570,6 +757,18 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
 
   function updateOverlay() {
     var reasonMap = { wall: "撞墙了", self: "咬到自己了", mine: "踩到雷了" };
+    if (demoState === "done") {
+      overlay.classList.remove("hidden");
+      overlayTitle.textContent = "🎉 AI 演示完成";
+      overlayText.textContent = "无尽模式下连续吃完 " + DEMO_FOODS + " 个食物，零死亡\n得分 " + state.score + " · 步数 " + state.steps;
+      return;
+    }
+    if (demoState === "failed") {
+      overlay.classList.remove("hidden");
+      overlayTitle.textContent = "💥 AI 演示中断";
+      overlayText.textContent = "AI 在吃到第 " + Math.floor(state.score / CFG.foodScore) + " 个食物时失败（" + (reasonMap[state.deathReason] || "未知") + "）";
+      return;
+    }
     if (state.status === "running") { overlay.classList.add("hidden"); return; }
     overlay.classList.remove("hidden");
     if (state.status === "ready") {
@@ -589,6 +788,7 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
   }
 
   function updatePauseBtn() {
+    if (demoState === "done" || demoState === "failed") { btnPause.textContent = "暂停"; return; }
     btnPause.textContent = state.status === "paused" ? "继续" : "暂停";
   }
 
@@ -596,6 +796,22 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     helpEl.textContent = controlMode === "mouse"
       ? "鼠标：蛇朝光标方向移动 · 点击棋盘开局 · 空格 暂停 · Enter 重开 · 别碰墙、自己或雷"
       : "方向键 / WASD 移动 · 空格 暂停 · Enter 重开 · 吃到食物得分 · 别碰墙、自己或雷 · 达到目标分通关";
+  }
+
+  function updateBanner() {
+    if (demoMode) demoBanner.classList.remove("hidden");
+    else demoBanner.classList.add("hidden");
+  }
+
+  function startDemo() {
+    currentDifficulty = "endless";
+    difficultySel.value = "endless";
+    newGame(true);          // 会重置 demoMode/demoState
+    demoMode = true;
+    demoState = "running";
+    updateBanner();
+    updateOverlay();
+    updatePauseBtn();
   }
 
   function renderHistory() {
@@ -631,6 +847,8 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
   }
 
   function newGame(run) {
+    demoMode = false;
+    demoState = "idle";
     state = core.createState(optsFor(currentDifficulty));
     if (run) state.status = "running";
     from = snapshot(state.snake);
@@ -640,9 +858,11 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     updateOverlay();
     updatePauseBtn();
     updateHelp();
+    updateBanner();
   }
 
   function togglePause() {
+    if (demoState === "done" || demoState === "failed") return;
     if (state.status === "ready") state.status = "running";
     else if (state.status === "running") state.status = "paused";
     else if (state.status === "paused") state.status = "running";
@@ -768,19 +988,39 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     var dt = Math.min(now - lastTime, 200);
     lastTime = now;
     if (state.status === "running") {
-      if (controlMode === "mouse" && mouseTarget) {
-        var md = core.steerToward(state, mouseTarget.gx, mouseTarget.gy);
-        if (md) core.setDirection(state, md);
-      }
       acc += dt;
       var iv = interval();
       while (acc >= iv) {
+        if (demoMode) {
+          var am = core.autoMove(state);
+          if (am) core.setDirection(state, am);
+        } else if (controlMode === "mouse" && mouseTarget) {
+          var md = core.steerToward(state, mouseTarget.gx, mouseTarget.gy);
+          if (md) core.setDirection(state, md);
+        }
         from = snapshot(state.snake);
         core.tick(state);
         acc -= iv;
         if (state.status === "won" || state.status === "lost") {
           acc = 0;
-          onGameEnd();
+          if (demoMode) {
+            demoMode = false;
+            demoState = "failed";
+            updateBanner();
+            updateOverlay();
+            updatePauseBtn();
+          } else {
+            onGameEnd();
+          }
+          break;
+        }
+        if (demoMode && state.score >= DEMO_FOODS * CFG.foodScore) {
+          demoMode = false;
+          demoState = "done";
+          state.status = "paused";
+          updateBanner();
+          updateOverlay();
+          updatePauseBtn();
           break;
         }
         iv = interval();
@@ -809,6 +1049,8 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
       return;
     }
     if (k === "Escape") { closeHistory(); return; }
+
+    if (demoMode) return; // 演示期间忽略空格/方向键，避免干扰 AI
 
     if (k === " " || k === "Spacebar") {
       e.preventDefault();
@@ -842,6 +1084,7 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
   });
 
   btnNew.addEventListener("click", function () { newGame(true); });
+  btnDemo.addEventListener("click", startDemo);
   btnPause.addEventListener("click", togglePause);
   btnHistory.addEventListener("click", openHistory);
   btnReset.addEventListener("click", resetRecords);
@@ -865,7 +1108,10 @@ canvas { display: block; width: 100%; height: auto; border-radius: 8px; backgrou
     setControlMode: function (m) { controlMode = m; updateHelp(); },
     getDifficulty: function () { return currentDifficulty; },
     setDifficulty: function (d) { currentDifficulty = d; difficultySel.value = d; newGame(false); },
-    newGame: newGame
+    newGame: newGame,
+    startDemo: startDemo,
+    getDemoState: function () { return demoState; },
+    isDemo: function () { return demoMode; }
   };
 
   applyTheme(currentTheme());

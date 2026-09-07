@@ -213,6 +213,24 @@ test("各难度初始布局：食物可达、雷不贴脸、不重叠", () => {
   });
 });
 
+test("食物不贴墙且周围 1 格无雷（不产生死局）", () => {
+  const cfgs = [
+    { cols: 20, rows: 20, maxMines: 3, target: 100 },
+    { cols: 40, rows: 20, maxMines: 20, target: 250 },
+    { cols: 40, rows: 20, maxMines: 50, target: 1000 },
+    { cols: 40, rows: 30, maxMines: 50, target: null, reshuffleMines: true }
+  ];
+  cfgs.forEach((c) => {
+    const s = core.createState(c);
+    const f = s.food;
+    assert.ok(f.x >= 1 && f.x <= s.cols - 2 && f.y >= 1 && f.y <= s.rows - 2, "食物不应贴墙");
+    for (const m of s.mines) {
+      assert.ok(Math.abs(m.x - f.x) > 1 || Math.abs(m.y - f.y) > 1, "雷不应在食物 1 格邻域内");
+    }
+    assert.ok(core.reachable(s, s.snake[0], f), "食物应可达");
+  });
+});
+
 test("reachable 能识别被雷隔断的不可达", () => {
   const s = core.createState({ cols: 5, rows: 5, maxMines: 0 });
   s.mines = [{ x: 3, y: 0 }, { x: 3, y: 1 }, { x: 3, y: 2 }, { x: 3, y: 3 }, { x: 3, y: 4 }];
@@ -241,6 +259,45 @@ test("steerToward 朝目标转向且绝不反向", () => {
   assert.notStrictEqual(behind, "LEFT");
   assert.strictEqual(core.steerToward(s, 5, 8), "DOWN");
   assert.strictEqual(core.steerToward(s, 5.3, 8), "DOWN");
+});
+
+console.log("AI 自动寻路测试：");
+test("autoMove 朝食物方向", () => {
+  const s = core.createState({ cols: 20, rows: 20 });
+  s.mines = [];
+  s.food = { x: s.snake[0].x + 1, y: s.snake[0].y };
+  assert.strictEqual(core.autoMove(s), "RIGHT");
+  s.food = { x: s.snake[0].x, y: s.snake[0].y - 1 };
+  assert.strictEqual(core.autoMove(s), "UP");
+});
+
+test("autoMove 避开雷", () => {
+  const s = core.createState({ cols: 20, rows: 20 });
+  const h = s.snake[0];
+  s.food = { x: h.x + 2, y: h.y };
+  s.mines = [{ x: h.x + 1, y: h.y }];
+  const mv = core.autoMove(s);
+  assert.ok(mv, "应有可走方向");
+  assert.notStrictEqual(mv, "RIGHT", "正前方是雷，不应向右");
+  assert.ok(mv === "UP" || mv === "DOWN", "应绕行（上下）");
+});
+
+test("AI 无尽模式连续吃 20 个食物不死（3 次）", () => {
+  for (let run = 0; run < 3; run++) {
+    const s = core.createState({ cols: 40, rows: 30, maxMines: 50, target: null, reshuffleMines: true, maxLives: 3, foodScore: 10 });
+    s.status = "running";
+    let guard = 0;
+    while (s.status === "running" && s.score < 200 && guard < 6000) {
+      const mv = core.autoMove(s);
+      if (mv) core.setDirection(s, mv);
+      core.tick(s);
+      guard++;
+    }
+    assert.ok(s.status !== "lost", `第 ${run + 1} 次：AI 不应死亡`);
+    assert.ok(s.score >= 200, `第 ${run + 1} 次：应吃完 20 个食物，得分 ${s.score}`);
+    assert.strictEqual(s.lives, 3, `第 ${run + 1} 次：应避开所有雷不掉血`);
+    assert.ok(guard < 6000, `第 ${run + 1} 次：应在步数上限内完成`);
+  }
 });
 
 console.log("生成产物冒烟测试：");
@@ -341,6 +398,13 @@ test("UI 启动、难度切换、操控切换、胜负后按键修复", () => {
   assert.strictEqual(app.getState().status, "lost", "空格不应重开");
   key(Object.assign({ key: "Enter" }, noop));
   assert.strictEqual(app.getState().status, "running", "Enter 应重开");
+
+  // AI 演示：切到无尽模式并进入 demo 状态
+  app.startDemo();
+  assert.strictEqual(app.isDemo(), true, "应进入演示模式");
+  assert.strictEqual(app.getDifficulty(), "endless", "演示应切到无尽难度");
+  assert.strictEqual(app.getState().cols, 40);
+  assert.strictEqual(app.getState().status, "running");
 });
 
 console.log("\n共 " + passed + " 项测试全部通过 ✅");

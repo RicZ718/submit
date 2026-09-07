@@ -46,6 +46,11 @@ class TestGenerator(unittest.TestCase):
                        "reachable", "mousedown", "mousemove", "id=\"difficulty\"", "id=\"control\""):
             self.assertIn(marker, html, marker)
 
+    def test_html_AI演示标记(self):
+        html = gen.build_html(gen.default_cfg())
+        for marker in ("AI 演示", "demo-banner", "btn-demo", "autoMove", "DEMO_FOODS", "startDemo"):
+            self.assertIn(marker, html, marker)
+
     def test_配置注入(self):
         html = gen.build_html(gen.default_cfg(cols=30, rows=25, target=200, maxMines=5, maxLives=4))
         # json.dumps(separators=(",", ":")) 生成紧凑格式，无空格。
@@ -57,7 +62,8 @@ class TestGenerator(unittest.TestCase):
     def test_core_js_导出与函数(self):
         js = gen.CORE_JS
         for marker in ("module.exports", "createState", "setDirection", "tick",
-                       "placeMines", "reshuffleMines", "reachable", "steerToward", "DIFFICULTIES"):
+                       "placeMines", "reshuffleMines", "reachable", "steerToward",
+                       "autoMove", "DIFFICULTIES"):
             self.assertIn(marker, js, marker)
 
     def test_写出文件(self):

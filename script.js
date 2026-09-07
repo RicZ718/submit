@@ -68,3 +68,26 @@ themeToggle?.addEventListener('click', () => {
   applyTheme(dark);
   try { localStorage.setItem('page-theme', dark ? 'dark' : 'light'); } catch { /* ignore */ }
 });
+
+/* ===== 着陆页：点击“查看资料”后退出全屏壁纸并显示资料界面 ===== */
+const viewProfileBtn = document.querySelector('a.button[href="#profile"]');
+
+function enterSite(shouldScroll = true) {
+  const wasLanding = document.body.classList.contains('is-landing');
+  if (wasLanding) {
+    document.body.classList.remove('is-landing');
+    // 等 hero 收缩动画结束后再平滑滚动到资料区
+    if (shouldScroll) {
+      setTimeout(() => {
+        document.getElementById('profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 800);
+    }
+  } else if (shouldScroll) {
+    document.getElementById('profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+viewProfileBtn?.addEventListener('click', (event) => {
+  event.preventDefault();
+  enterSite();
+});

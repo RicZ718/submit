@@ -50,6 +50,18 @@
     }
   }
 
+  // 食物 3×3 邻域也排除，避免雷紧贴食物形成「赢不了」的死局。
+  function blockNearFood(state, occupied) {
+    if (!state.food) return;
+    var f = state.food;
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        var x = f.x + dx, y = f.y + dy;
+        if (inBounds(state, x, y)) occupied.add(x + "," + y);
+      }
+    }
+  }
+
   function randomFreeCell(state) {
     var occupied = new Set();
     state.snake.forEach(function (s) { occupied.add(key(s)); });
@@ -83,17 +95,42 @@
     return false;
   }
 
-  // 放置食物：优先取「从蛇头可达」的空格，保证食物不会因雷/蛇身被隔死。
+  // 某格 3×3 邻域内是否有雷。
+  function mineNear(state, cell) {
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        var nx = cell.x + dx, ny = cell.y + dy;
+        for (var i = 0; i < state.mines.length; i++) {
+          if (state.mines[i].x === nx && state.mines[i].y === ny) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // 放置食物：优先取「不贴墙 + 周围 1 格无雷 + 从蛇头可达」的空格，
+  // 避免食物落入角落/雷包而变成赢不了的死局。
   function placeFood(state) {
-    for (var t = 0; t < 60; t++) {
+    for (var t = 0; t < 200; t++) {
       var occupied = new Set();
       state.snake.forEach(function (s) { occupied.add(key(s)); });
       (state.mines || []).forEach(function (m) { occupied.add(key(m)); });
       var cell = randomCell(state, occupied);
       if (!cell) return null;
+      if (cell.x < 1 || cell.x > state.cols - 2 || cell.y < 1 || cell.y > state.rows - 2) continue; // 不贴墙
+      if (mineNear(state, cell)) continue; // 周围 1 格无雷
       if (reachable(state, state.snake[0], cell)) return cell;
     }
-    return null; // 找不到可达空格（棋盘几乎被占满/蛇身封死），按通关处理
+    // 兜底：仅要求可达（小棋盘/极端情况）
+    for (var t2 = 0; t2 < 60; t2++) {
+      var occupied2 = new Set();
+      state.snake.forEach(function (s) { occupied2.add(key(s)); });
+      (state.mines || []).forEach(function (m) { occupied2.add(key(m)); });
+      var cell2 = randomCell(state, occupied2);
+      if (!cell2) return null;
+      if (reachable(state, state.snake[0], cell2)) return cell2;
+    }
+    return null;
   }
 
   // 放置雷：不贴蛇身/食物/蛇头四邻，并保证食物仍从蛇头可达（否则重试）。
@@ -106,6 +143,7 @@
       if (state.food) occupied.add(key(state.food));
       if (!fresh) (state.mines || []).forEach(function (m) { occupied.add(key(m)); });
       blockNearHead(state, occupied);
+      blockNearFood(state, occupied);
       var mines = fresh ? [] : (state.mines || []).slice();
       while (mines.length < count) {
         var cell = randomCell(state, occupied);
@@ -122,6 +160,7 @@
     if (state.food) occ.add(key(state.food));
     if (!fresh) (state.mines || []).forEach(function (m) { occ.add(key(m)); });
     blockNearHead(state, occ);
+    blockNearFood(state, occ);
     var out = fresh ? [] : (state.mines || []).slice();
     for (i = 0; i < count; i++) {
       var c = randomCell(state, occ);
@@ -270,6 +309,141 @@
     return state;
   }
 
+  // 返回从 from 出发、走第一步的方向即可达 to 的方向（BFS，不返回完整路径）。
+  function bfsFirstStep(state, from, to, blocked) {
+    var dirs = [[1, 0, "RIGHT"], [-1, 0, "LEFT"], [0, 1, "DOWN"], [0, -1, "UP"]];
+    var queue = [];
+    var seen = new Set();
+    seen.add(key(from));
+    for (var i = 0; i < dirs.length; i++) {
+      var nx = from.x + dirs[i][0], ny = from.y + dirs[i][1];
+      var k = nx + "," + ny;
+      if (!inBounds(state, nx, ny) || blocked.has(k)) continue;
+      if (nx === to.x && ny === to.y) return dirs[i][2];
+      seen.add(k);
+      queue.push({ x: nx, y: ny, first: dirs[i][2] });
+    }
+    while (queue.length) {
+      var cur = queue.shift();
+      for (var j = 0; j < dirs.length; j++) {
+        var nx2 = cur.x + dirs[j][0], ny2 = cur.y + dirs[j][1];
+        var k2 = nx2 + "," + ny2;
+        if (!inBounds(state, nx2, ny2) || blocked.has(k2) || seen.has(k2)) continue;
+        if (nx2 === to.x && ny2 === to.y) return cur.first;
+        seen.add(k2);
+        queue.push({ x: nx2, y: ny2, first: cur.first });
+      }
+    }
+    return null;
+  }
+
+  // 从 (x, y) 出发能走到的空格数量（BFS 洪泛）。
+  function floodArea(state, x, y, blocked) {
+    var queue = [{ x: x, y: y }];
+    var seen = new Set();
+    seen.add(x + "," + y);
+    var area = 0;
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    while (queue.length) {
+      var cur = queue.shift();
+      area++;
+      for (var i = 0; i < dirs.length; i++) {
+        var nx = cur.x + dirs[i][0], ny = cur.y + dirs[i][1];
+        var k = nx + "," + ny;
+        if (!inBounds(state, nx, ny) || blocked.has(k) || seen.has(k)) continue;
+        seen.add(k);
+        queue.push({ x: nx, y: ny });
+      }
+    }
+    return area;
+  }
+
+  // 从 from 到 to 是否有通路（blocked 为显式障碍集合；to 不在 blocked 中）。
+  function canReach(state, from, to, blocked) {
+    var queue = [from];
+    var seen = new Set();
+    seen.add(key(from));
+    while (queue.length) {
+      var cur = queue.shift();
+      if (cur.x === to.x && cur.y === to.y) return true;
+      var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      for (var i = 0; i < dirs.length; i++) {
+        var nx = cur.x + dirs[i][0], ny = cur.y + dirs[i][1];
+        var k = nx + "," + ny;
+        if (!inBounds(state, nx, ny) || blocked.has(k) || seen.has(k)) continue;
+        seen.add(k);
+        queue.push({ x: nx, y: ny });
+      }
+    }
+    return false;
+  }
+
+  // 判断某方向是否「安全」：不撞墙/雷/自身，且走完后蛇头仍能回到尾巴（不会被逼死）。
+  function isSafeMove(state, dir) {
+    var d = DIR[dir];
+    var head = state.snake[0];
+    var nx = head.x + d.x, ny = head.y + d.y;
+    if (!inBounds(state, nx, ny)) return false;
+    var willEat = !!state.food && nx === state.food.x && ny === state.food.y;
+    var newSnake = [{ x: nx, y: ny }].concat(state.snake);
+    if (!willEat) newSnake.pop();
+    for (var i = 1; i < newSnake.length; i++) {
+      if (newSnake[i].x === nx && newSnake[i].y === ny) return false; // 自身碰撞
+    }
+    for (var j = 0; j < state.mines.length; j++) {
+      if (state.mines[j].x === nx && state.mines[j].y === ny) return false; // 踩雷
+    }
+    var tail = newSnake[newSnake.length - 1];
+    var blocked = new Set();
+    for (var k = 0; k < newSnake.length - 1; k++) blocked.add(key(newSnake[k]));
+    for (var m = 0; m < state.mines.length; m++) blocked.add(key(state.mines[m]));
+    return canReach(state, { x: nx, y: ny }, tail, blocked); // 蛇头仍可达尾巴
+  }
+
+  // AI 自动控制：最短安全路径去食物；不可达/不安全时向「可活动空间最大」处绕行。
+  function autoMove(state) {
+    if (!state.food) return null;
+    var head = state.snake[0];
+    var blocked = new Set();
+    for (var i = 0; i < state.snake.length - 1; i++) blocked.add(key(state.snake[i]));
+    for (var j = 0; j < state.mines.length; j++) blocked.add(key(state.mines[j]));
+    var curDir = state.queue.length ? state.queue[state.queue.length - 1] : state.direction;
+    var rev = OPPOSITE[curDir];
+    if (rev) {
+      var rd = DIR[rev];
+      var rx = head.x + rd.x, ry = head.y + rd.y;
+      if (inBounds(state, rx, ry)) blocked.add(rx + "," + ry);
+    }
+
+    var dirs = [[1, 0, "RIGHT"], [-1, 0, "LEFT"], [0, 1, "DOWN"], [0, -1, "UP"]];
+
+    // 1) 最短安全路径去食物
+    var dir = bfsFirstStep(state, head, state.food, blocked);
+    if (dir && isSafeMove(state, dir)) return dir;
+
+    // 2) 安全方向里，选「可活动空间最大」者（远离死角，绕行等待机会）
+    var best = null, bestArea = -1;
+    for (var k = 0; k < dirs.length; k++) {
+      if (dirs[k][2] === rev) continue;
+      if (!isSafeMove(state, dirs[k][2])) continue;
+      var nx = head.x + dirs[k][0], ny = head.y + dirs[k][1];
+      var area = floodArea(state, nx, ny, blocked);
+      if (area > bestArea) { bestArea = area; best = dirs[k][2]; }
+    }
+    if (best) return best;
+
+    // 3) 兜底：不做安全校验，最大活动空间
+    bestArea = -1;
+    for (var k2 = 0; k2 < dirs.length; k2++) {
+      var nx2 = head.x + dirs[k2][0], ny2 = head.y + dirs[k2][1];
+      var kk2 = nx2 + "," + ny2;
+      if (!inBounds(state, nx2, ny2) || blocked.has(kk2)) continue;
+      var area2 = floodArea(state, nx2, ny2, blocked);
+      if (area2 > bestArea) { bestArea = area2; best = dirs[k2][2]; }
+    }
+    return best;
+  }
+
   return {
     DIR: DIR,
     OPPOSITE: OPPOSITE,
@@ -282,6 +456,7 @@
     randomFreeCell: randomFreeCell,
     placeFood: placeFood,
     placeMines: placeMines,
-    reshuffleMines: reshuffleMines
+    reshuffleMines: reshuffleMines,
+    autoMove: autoMove
   };
 });
