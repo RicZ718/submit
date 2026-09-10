@@ -1,0 +1,6 @@
+RC 低通滤波器 结果
+R=1kOhm  C=100nF
+tau_theory_us=100.00
+tau_sim_us=100.20
+fc_theory_hz=1591.55
+fc_sim_hz=1584.89

@@ -1,0 +1,14 @@
+戴维南定理验证 结果
+Vs=10V R1=4k R2=6k RL=1.2k
+Vth_theory_v=6.0000
+Voc_sim_v=6.0000
+Rth_theory_kohm=2.4000
+Rth_sim_kohm=2.4000
+Isc_theory_ma=2.5000
+Isc_sim_ma=2.5000
+VL_theory_v=2.0000
+VL_orig_v=2.0000
+VL_eq_v=2.0000
+IL_theory_ma=1.6667
+IL_orig_ma=1.6667
+IL_eq_ma=1.6667

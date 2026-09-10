@@ -1,0 +1,17 @@
+NMOS 共源放大电路 结果
+VGS_theory_v=2.0000
+VGS_sim_v=2.0000
+ID_theory_mA=0.8527
+ID_sim_mA=0.8527
+VDS_theory_v=3.2946
+VDS_sim_v=3.2946
+gm_theory_mA_V=1.7054
+gm_sim_mA_V=1.7054
+ro_theory_ohm=62500.0
+ro_sim_ohm=62500.0
+Av_theory_ro=-3.3051
+Av_small=-3.3051
+Av_gain_meas=3.3050
+Av_ac=3.3051
+Vout_amp_mV=33.0502
+phase_ac_deg=-180.0
