@@ -1,21 +1,22 @@
 # 贪吃蛇（Snake）· 单文件网页游戏
 
-一个**纯前端、无框架依赖、双击即玩**的贪吃蛇游戏，附 **Python 生成器** 与完整测试。
+一个**纯前端、无框架依赖、双击即玩**的贪吃蛇游戏，附完整测试。
 
-- 产物 `snake.html` 是一个自包含文件（HTML + CSS + JS 全部内嵌），**双击即可在浏览器打开游玩**，无需任何服务器、构建或第三方库。
-- `generate_snake.py` 是生成器：运行它把配置注入并产出 `snake.html` 与可测试的 `snake_core.js`。
+- 游戏本体 `snake.html` 是一个自包含文件（HTML + CSS + JS 全部内嵌），**双击即可在浏览器打开游玩**，无需任何服务器、构建或第三方库。
+- `snake_core.js` 是从 `snake.html` 里抽出的同一份核心逻辑（UMD 导出），浏览器与 Node 测试共用一份代码。
 
 ---
 
 ## 快速开始
 
 1. 直接**双击 `snake.html`** 即可玩（推荐）。
-2. 或重新生成（可自定义参数）：
+2. 想调整默认参数，打开 `snake.html` 找到主脚本开头的 `CFG` 一行改掉即可：
 
-```bash
-python generate_snake.py                 # 默认配置
-python generate_snake.py --cols 25 --target 200 --mines 5 --lives 4
+```js
+var CFG = {"cols":20,"rows":20,"target":100,"maxMines":3,"maxLives":3,"foodScore":10,"baseInterval":140,"minInterval":70,"cell":24};
 ```
+
+> `cols` / `rows` 是棋盘尺寸，`target` 是通关分（`null` 表示不设上限），`maxMines` / `maxLives` 是雷数与生命，`baseInterval` / `minInterval` 是节奏快慢，`cell` 是单格像素；改完保存刷新页面即生效。
 
 ### 玩法与操作
 
@@ -70,13 +71,11 @@ python generate_snake.py --cols 25 --target 200 --mines 5 --lives 4
 
 ```
 snake/
-├── generate_snake.py    # Python 生成器（核心逻辑/渲染/样式/配置注入）
-├── snake.html           # 生成的单文件游戏（双击即玩）
-├── snake_core.js        # 生成的核心逻辑（UMD 导出，供 Node 测试）
+├── snake.html           # 单文件游戏（HTML + CSS + JS 全部内嵌，双击即玩）
+├── snake_core.js        # 抽出的核心逻辑（UMD 导出，供 Node 测试）
 ├── README.md            # 本文档
 └── tests/
-    ├── test_generator.py  # 生成器单元测试（标准库 unittest）
-    └── test_logic.js      # 核心逻辑 + 产物冒烟 + 无头启动测试（Node 内置 assert）
+    └── test_logic.js    # 核心逻辑 + 产物冒烟 + 无头启动测试（Node 内置 assert）
 ```
 
 ---
@@ -85,16 +84,14 @@ snake/
 
 ```bash
 cd snake
-python tests/test_generator.py     # 生成器测试（9 项）
 node   tests/test_logic.js         # 逻辑/冒烟/无头启动测试（24 项）
 ```
 
-> 两套测试均**零第三方依赖**：Python 用标准库 `unittest`，Node 用内置 `assert`/`vm`/`fs`。
-> 当前结果：**Python 9/9 通过，Node 24/24 通过**。
+> 测试**零第三方依赖**：只用 Node 内置的 `assert`/`vm`/`fs`。
+> 当前结果：**24/24 通过**。
 
 测试覆盖：
 
-- 生成器：HTML 基本结构、特性标记（localStorage/主题/方向键/关键文案/难度/操控/AI 演示）、配置注入、写出文件。
 - 核心逻辑：默认状态、移动计步、吃食物加分变长、撞墙/自咬/踩雷判负、通关、雷数恢复、反向禁止、暂停、自定义配置。
 - 难度与可达性：难度表数值、各难度初始布局「食物可达 / 雷不贴脸 / 不重叠」、食物不贴墙且周围无雷、`reachable` 隔断识别、无尽模式雷重新分布且不胜利、`steerToward` 转向不反向。
 - AI 自动寻路：`autoMove` 朝食物/避雷、无尽模式连续吃 20 个食物不死（单测 3 次 + 离线 500 次稳定性验证）。
@@ -130,7 +127,7 @@ node   tests/test_logic.js         # 逻辑/冒烟/无头启动测试（24 项�
 
 **验证方式**
 
-- `tests/test_generator.py` 断言生成的 HTML 包含 `localStorage`、`snake_theme`、`snake_high`、`snake_history`、`data-theme` 及「最高分/局数/重置/历史/主题」等关键文案与标记。
+- `tests/test_logic.js` 的无头启动测试在模拟的 DOM/localStorage 环境里真实执行 `snake.html` 的主脚本，确认启动路径与「胜负后仅 Enter 重开」的修复；`localStorage` 中的最高分、局数、历史与主题以浏览器手动验收确认。
 - `tests/test_logic.js` 覆盖自定义配置注入（含 `maxMines`/`maxLives`/`target`），验证计分/通关/踩雷扣命逻辑。
 - 手动验收：玩两局确认局数 +2、历史追加两条；刷新页面确认最高分/局数/主题保留；点「重置记录」确认清空；切主题即时生效且刷新后保持。
 
@@ -138,7 +135,7 @@ node   tests/test_logic.js         # 逻辑/冒烟/无头启动测试（24 项�
 
 **实现方式**
 
-1. 四档难度：核心里定义 `DIFFICULTIES`（easy 取生成器基线，normal/hard/endless 为固定矩形地图与雷数/目标）；开局前用下拉选择，切换即 `newGame(false)` 进入待开始状态。无尽模式 `target=null`（不设胜利分）且 `reshuffleMines=true`。
+1. 四档难度：核心里定义 `DIFFICULTIES`（easy 取 `snake.html` 内 `CFG` 的基线，normal/hard/endless 为固定矩形地图与雷数/目标）；开局前用下拉选择，切换即 `newGame(false)` 进入待开始状态。无尽模式 `target=null`（不设胜利分）且 `reshuffleMines=true`。
 2. 可达性保证（「不能产生赢不了的雷分布」）：新增 BFS `reachable(state, from, to, mines)`；`placeFood` 只把食物放在「从蛇头可达」的空格，`placeMines/reshuffleMines` 在放雷后校验食物仍可达、否则重试（上限 60 次）。同时雷不落在蛇身/食物/蛇头四邻，避免贴脸刷雷与封死食物。
 3. 无尽模式刷新：吃到食物后 `reshuffleMines(state, maxMines)` 丢弃旧雷、重新随机分布满 50 颗，并保持可达性。
 4. bug 修复：`keydown` 里删除「方向键 / 空格在胜负后触发 `newGame`」的逻辑，胜负后只有 `Enter` 与「新一局」按钮能重开。
@@ -147,8 +144,7 @@ node   tests/test_logic.js         # 逻辑/冒烟/无头启动测试（24 项�
 **验证方式**
 
 - `tests/test_logic.js` 新增：难度表数值、四档初始布局「食物可达 + 雷不贴脸 + 不重叠」、`reachable` 隔断识别、无尽模式刷新不胜利、`steerToward` 不反向（共 20 项通过）。
-- `tests/test_generator.py` 新增难度/操控/鼠标相关标记断言（共 8 项通过）。
-- 无头启动测试通过 `SnakeApp` 钩子验证：难度切换后地图/雷/目标正确、操控方式切换正确、以及「胜负后方向键/空格不重开、Enter 重开」。
+- `tests/test_logic.js` 的无头启动测试断言难度切换后地图/雷/目标正确、操控方式切换正确，以及「胜负后方向键/空格不重开、Enter 重开」。
 - 手动验收：开局选「困难」看到 40×20 与 50 雷；选「无尽」得分无上限、吃食物雷重排；鼠标模式下移动光标蛇随之转向；游戏结束后乱按方向键不会重开。
 
 ### 第三轮迭代：AI 自动演示（无尽模式连吃 20 食物）
@@ -175,7 +171,7 @@ node   tests/test_logic.js         # 逻辑/冒烟/无头启动测试（24 项�
 
 ### 原始提示词（原文）
 
-> 帮我用python生成一个贪吃蛇游戏，先做出"能自己玩"的版本，能直接上手玩。要求：
+> 帮我生成一个贪吃蛇游戏，先做出"能自己玩"的版本，能直接上手玩。要求：
 > 1.操作流畅、顺手（用键盘操控，按游戏惯例来）；
 > 2.规则完整，有得分、胜负或通关判定，界面上能看到当前状态（得分、步数、剩余雷数等）；
 > 3.界面干净明了，一看就知道怎么玩、玩到哪一步了；
@@ -191,16 +187,16 @@ node   tests/test_logic.js         # 逻辑/冒烟/无头启动测试（24 项�
 
 | 迭代 | 想让 AI 做什么 | 结果如何 | 提示词怎么调整 |
 | --- | --- | --- | --- |
-| 1 澄清歧义 | 原始需求有两处矛盾/含糊：「用 Python 生成」与「纯前端单文件双击打开」冲突；「剩余雷数」在贪吃蛇中含义不明 | AI 追问后，用户确认：交付形式选「Python 生成器 + HTML 单文件」；「剩余雷数」选「加雷障碍机制」 | 将需求收敛为「写 `generate_snake.py` 生成 `snake.html`；加入雷障碍 + 生命机制，界面显示剩余雷数」 |
-| 2 初始化 + 编码 | 先初始化目录/任务清单，再写生成器：核心逻辑、渲染、主题、持久化全部内嵌，配置可注入 | 生成器与两个产物完成，CFG 正确注入 | 无需调整，按计划推进 |
-| 3 编写并运行测试 | 写测试：Python `unittest`（生成器）+ Node `assert`（核心逻辑）+ 产物冒烟 | 首轮 Python 测试 2 处失败：①文案标记「主题」不在 HTML；②写系统临时目录被沙箱拒绝 | ①给主题按钮加 `title="切换主题"`；②测试临时目录改到 workspace 内。复跑后 Python 7/7 通过 |
+| 1 澄清歧义 | 原始需求有两处矛盾/含糊：既要先写代码把游戏生成出来，又要求「纯前端单文件双击打开」，两者关系说不清；「剩余雷数」在贪吃蛇中含义不明 | AI 追问后，用户确认：交付形式选「单个 HTML 文件内嵌全部代码」；「剩余雷数」选「加雷障碍机制」 | 将需求收敛为「直接写一个自包含的 `snake.html`；加入雷障碍 + 生命机制，界面显示剩余雷数」 |
+| 2 初始化 + 编码 | 先初始化目录/任务清单，再写单文件游戏：核心逻辑、渲染、主题、持久化全部内嵌，配置可调 | 单文件游戏与可测试的核心逻辑完成，`CFG` 配置就位 | 无需调整，按计划推进 |
+| 3 编写并运行测试 | 写测试：Node `assert`（核心逻辑）+ 产物冒烟 | 首轮测试 2 处失败：①文案标记「主题」不在 HTML；②写系统临时目录被沙箱拒绝 | ①给主题按钮加 `title="切换主题"`；②测试临时目录改到 workspace 内。复跑后全部通过 |
 | 4 加固测试 | 增加无头启动冒烟测试（`vm` 模拟 DOM/localStorage 真实跑主脚本启动路径），捕获运行时错误而非仅语法 | Node 测试扩到 15 项，全部通过 | 完成后固定，进入文档阶段 |
 | 5 新增四档难度 | 增加普通/困难/无尽三档难度，并保证雷的分布不封死食物（可达性校验） | 实现 `DIFFICULTIES` + BFS `reachable`，雷不贴脸不重叠；各难度布局测试通过 | 把 `spawnMines` 重构为 `placeMines/reshuffleMines`，食物也走可达性校验 |
 | 6 修 bug + 鼠标操控 | 修复「胜负后任意键重开」，新增鼠标操控选项 | `keydown` 只在 Enter 重开；`steerToward` 实现不反向转向 | 反向目标退化为垂直方向，避免蛇无法转向光标 |
-| 7 回归测试 | 重跑全部测试并更新 README | Python 8/8、Node 20/20 全绿 | 无 |
+| 7 回归测试 | 重跑全部测试并更新 README | Node 20/20 全绿 | 无 |
 | 8 实现 AI 自动寻路 | 无尽模式自动控制蛇连吃 20 食物不死 | 先做贪心 BFS 最短路径，30 次出现 1 次死亡、200 次出现卡死 | 加 `isSafeMove`（尾可达）安全校验 + 绕行，仍未根治 |
 | 9 定位死局根因 | 诊断卡死现场，找出「为什么吃不到食物」 | 发现食物被放进角落、被雷+蛇身封死成死局（`reachable=false`） | 让 `placeFood` 只放「不贴墙 + 周围无雷」的位置，`placeMines` 也避开食物 3×3 |
-| 10 稳定性验证 | 确认 AI 稳定连吃 20 食物 | 离线 500 次 500/500 成功；测试扩到 Python 9/9、Node 24/24 | 无 |
+| 10 稳定性验证 | 确认 AI 稳定连吃 20 食物 | 离线 500 次 500/500 成功；测试扩到 Node 24/24 | 无 |
 
 > 说明：以上「提示词」既包含自然语言需求，也包含澄清阶段的追问与每次失败后的修正指令；记录忠实还原了「提需求 → 看结果 → 调提示词」的过程。
 
@@ -220,7 +216,7 @@ node   tests/test_logic.js         # 逻辑/冒烟/无头启动测试（24 项�
 
 ## 技术要点与设计决策
 
-- **为什么是 HTML 而不是 Python 直接跑**：需求 4 要求「纯前端单文件、浏览器双击打开」，只有 HTML/CSS/JS 能满足；Python 作为**生成器**介入，兼顾「用 Python 生成」的字面要求。
+- **为什么是 HTML/CSS/JS**：需求 4 要求「纯前端单文件、浏览器双击打开」，只有 HTML/CSS/JS 能满足；因此把结构、样式与逻辑全部内嵌在一个 `snake.html` 里，双击即玩。
 - **核心逻辑与渲染解耦**：逻辑是纯函数（可单测、确定性可推导），渲染/输入/持久化是副作用层；这样 `snake_core.js` 能被 Node 直接 `require` 做单测，也能被浏览器内联使用，一份代码两处复用。
 - **持久化键**：`snake_theme`、`snake_high`、`snake_games`、`snake_history`，全部走 `localStorage`，跨刷新保留。
-- **无依赖**：不引任何框架；测试仅用语言内置能力（`unittest` / `assert` / `vm` / `fs`）。
+- **无依赖**：不引任何框架；测试仅用 Node 内置能力（`assert` / `vm` / `fs`）。
