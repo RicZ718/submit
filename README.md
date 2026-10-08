@@ -25,7 +25,7 @@ AI agents: codex + deepseek harness
 
 个人简介pdf保存在\<_resume_preview.html\>中，双击即可打开
 
-个人网站保存在\<index.html\>中，可以通过https://RicZ718.github.io/submit/访问，也可以双击文件打开
+个人网站保存在\<index.html\>中，可以通过 https://RicZ718.github.io/submit/ 访问，也可以双击文件打开
 
 ## 3 通用素养
 
