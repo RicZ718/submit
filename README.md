@@ -166,7 +166,7 @@ requestAnimationFrame(loop);
 
 #### 1.2 电路图
 
-![RC 低通滤波电路图](circuit/figures/rc_schematic.png)
+![RC 低通滤波电路图](circuit/figures/1.2.jpg)
 
 #### 1.3 手算理论值
 
@@ -224,7 +224,7 @@ $$H(j\omega)=\frac{V_o}{V_i}=\frac{1}{1+j\omega R C},\quad |H|=\frac{1}{\sqrt{1+
 
 端口为 R2 两端（节点 a 与地）。原网络图如下（标注端口 a、b）：
 
-![含源二端网络](circuit/figures/thevenin_network.png)
+![含源二端网络](circuit/figures/2.1.jpg)
 
 #### 2.2 手算理论值
 
@@ -259,7 +259,7 @@ $$I_L=\frac{V_{th}}{R_{th}+R_L}=\frac{6}{2.4\text{k}+1.2\text{k}}=1.667\ \text{m
 
 戴维南等效电路：$V_{th}=6$ V、$R_{th}=2.4$ kΩ 串联后接 $R_L=1.2$ kΩ：
 
-![戴维南等效电路](circuit/figures/thevenin_equiv.png)
+![戴维南等效电路](circuit/figures/2.4.jpg)
 
 #### 2.5 「理论值 vs 仿真值」对比表
 
@@ -302,7 +302,7 @@ $$I_L=\frac{V_{th}}{R_{th}+R_L}=\frac{6}{2.4\text{k}+1.2\text{k}}=1.667\ \text{m
 
 #### 3.2 完整电路图
 
-![NMOS 共源放大电路](circuit/figures/mos_full.png)
+![NMOS 共源放大电路](circuit/figures/3.2.png)
 
 #### 3.3 手算静态工作点
 
@@ -324,7 +324,7 @@ $$V_{DS}=5-I_D R_d=5-0.8527\text{m}\times2000=5-1.7054=3.2946\ \text{V}$$
 
 #### 3.4 直流通路图
 
-![直流通路](circuit/figures/mos_dc.png)
+![直流通路](circuit/figures/3.4.jpg)
 
 直流分析时 C_b1 开路，栅极电位由 R_g1 / R_g2 分压决定，源极接地。
 
@@ -352,7 +352,7 @@ $$A_v=-\frac{v_o}{v_i}=-g_m\,R_{out}=-1.7054\text{m}\times1938=-3.305$$
 
 共源放大电路的小信号等效模型：输入 $v_i$ 加在栅-源之间（$v_{gs}=v_i$），受控电流源 $g_m v_{gs}$ 从漏极流向源极，$r_o$ 与 $R_d$ 从漏极到地（交流地）并联，输出取自漏极：
 
-![小信号等效模型](circuit/figures/mos_small_signal.png)
+![小信号等效模型](circuit/figures/3.6.jpg)
 
 #### 3.7 直流工作点仿真（OP）
 
